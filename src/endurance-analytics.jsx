@@ -1,4 +1,3 @@
-import React from "react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
@@ -472,9 +471,11 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
                          "Rest or a very easy walk. Let your body recover.";
 
   // This week distance
-  const weekStart = new Date(); weekStart.setDate(today.getDate() - today.getDay());
+  const weekStart = new Date(today); 
+  weekStart.setDate(today.getDate() - today.getDay());
+  weekStart.setHours(0, 0, 0, 0);
   const weekDist = uploadedWorkouts
-    .filter(w => new Date(w.date + "T12:00:00") >= weekStart)
+    .filter(w => new Date(w.date + "T00:00:00") >= weekStart)
     .reduce((s, w) => s + (w.distance || 0), 0);
   const weekDistFmt = units.distance === "mi"
     ? `${(weekDist * 0.621371).toFixed(1)} mi`
@@ -610,7 +611,7 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
       </div>
 
       {/* ── Fitness trend chart ── always shown, empty state if no data ── */}
-      <div className="card full-width">
+      <div className="card full-width chart-card">
         <h3>Fitness Trend</h3>
         <p className="card-sub">Fitness · Fatigue · Form — 90 days</p>
         {hasData ? (
@@ -2010,7 +2011,7 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
       </div>
 
       {/* HR + Pace stream */}
-      <div className="card full-width">
+      <div className="card full-width chart-card">
         <h3>Heart Rate & Pace</h3>
         <ResponsiveContainer width="100%" height={260}>
           <ComposedChart data={hrStream}>
@@ -2029,7 +2030,7 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
       </div>
 
       {/* Power + Cadence */}
-      <div className="card">
+      <div className="card chart-card">
         <h3>Power Output</h3>
         <div className="row-2-inline">
           <InfoStatCard label="Avg Power" value={`${workout.avgPower}W`} accent="#a78bfa"
@@ -2051,7 +2052,7 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
 
       {/* Cadence */}
       {hasCadence && (
-        <div className="card">
+        <div className="card chart-card">
           <h3>Cadence</h3>
           <div className="row-2-inline">
             <InfoStatCard label="Avg Cadence" value={`${avgCadence}`} sub="spm" accent="#34d399"
@@ -2096,7 +2097,7 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
       </div>
 
       {/* Elevation */}
-      <div className="card full-width">
+      <div className="card full-width chart-card">
         <h3>Elevation Profile</h3>
         <p className="card-sub">+{elevLabel} gain</p>
         <ResponsiveContainer width="100%" height={180}>
@@ -2659,7 +2660,7 @@ const RecoverySection = ({ athlete, uploadedWorkouts }) => {
       </div>
 
       {/* 42-day ATL / CTL / TSB chart */}
-      <div className="card full-width">
+      <div className="card full-width chart-card">
         <h3>42-Day Fitness, Strain & Form</h3>
         <p className="card-sub">CTL = fitness (blue) · ATL = strain (orange) · TSB = form (lime)</p>
         {hasData ? (
@@ -3356,7 +3357,7 @@ const TrendsView = ({ onSelectWorkout, uploadedWorkouts = [], units, athlete, re
       </div>
 
       {paceTrend.length > 1 && (
-        <div className="card full-width">
+        <div className="card full-width chart-card">
           <h3>Pace Trend</h3>
           <p className="card-sub">Average pace per session ({units.distance === "mi" ? "min/mi" : "min/km"})</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -3372,7 +3373,7 @@ const TrendsView = ({ onSelectWorkout, uploadedWorkouts = [], units, athlete, re
       )}
 
       {hrTrend.length > 1 && (
-        <div className="card full-width">
+        <div className="card full-width chart-card">
           <h3>Heart Rate Trend</h3>
           <p className="card-sub">Average HR per session</p>
           <ResponsiveContainer width="100%" height={200}>
@@ -3388,7 +3389,7 @@ const TrendsView = ({ onSelectWorkout, uploadedWorkouts = [], units, athlete, re
       )}
 
       {weeklyLoad.length > 0 && (
-        <div className="card full-width">
+        <div className="card full-width chart-card">
           <h3>Weekly Volume</h3>
           <p className="card-sub">Distance & training stress by week</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -4253,17 +4254,97 @@ function App() {
           .mobile-header { display: flex; }
           .bottom-nav { display: block; }
           .main {
-            padding: 12px 12px 80px;
-            /* 80px = bottom nav height + breathing room */
+            padding: 12px 14px 90px;
           }
           .page-header { display: none; }
           .view-grid { gap: 12px; }
           .row-3, .row-4, .row-6, .row-7 { grid-template-columns: repeat(2, 1fr); gap: 10px; }
           .row-2-inline { grid-template-columns: 1fr 1fr; gap: 10px; }
-          .card { border-radius: 12px; padding: 14px 14px; }
-          .stat-card { padding: 12px 14px; }
-          .stat-value { font-size: 26px; }
+          .card { border-radius: 12px; padding: 16px 14px; }
           .full-width { width: 100%; }
+
+          /* ── Mobile font scale-up ── */
+          .card h3                { font-size: 20px; }
+          .card-sub               { font-size: 13px; }
+          .stat-card              { padding: 12px 8px; }
+          .stat-label             { font-size: 12px; }
+          .stat-value             { font-size: 28px; }
+          .stat-sub               { font-size: 12px; }
+
+          /* Dashboard */
+          .dash-hello             { font-size: 16px; }
+          .dash-name              { font-size: 38px; }
+          .drc-label              { font-size: 12px; }
+          .drc-suggestion         { font-size: 15px; }
+          .drc-stat-val           { font-size: 24px; }
+          .drc-stat-lbl           { font-size: 11px; }
+          .dqc-val                { font-size: 22px; }
+          .dqc-lbl                { font-size: 11px; }
+          .dlw-name               { font-size: 16px; }
+          .dlw-stats              { font-size: 14px; }
+          .dlw-label              { font-size: 12px; }
+          .dlw-date               { font-size: 13px; }
+          .mobile-header-title    { font-size: 17px; }
+
+          /* Workout list */
+          .wr-name                { font-size: 15px; }
+          .wr-date                { font-size: 13px; }
+          .wr-tag                 { font-size: 11px; }
+          .wr-metric              { font-size: 15px; }
+          .wr-metric-unit         { font-size: 12px; }
+          .wr-chevron             { font-size: 20px; }
+
+          /* Workout detail */
+          .wdv-name               { font-size: 22px; }
+          .wdv-date               { font-size: 14px; }
+          .wdv-metric-val         { font-size: 22px; }
+          .wdv-metric-lbl         { font-size: 11px; }
+          .wdv-metric-unit        { font-size: 12px; }
+          .back-btn               { font-size: 13px; }
+
+          /* Recovery */
+          .ra-label               { font-size: 13px; }
+          .ra-rlabel              { font-size: 12px; }
+          .risk-item              { font-size: 13px; }
+          .coach-block            { font-size: 14px; }
+          .recovery-suggestion    { font-size: 14px; }
+          .se-title               { font-size: 13px; }
+          .se-desc                { font-size: 13px; }
+          .se-proj-label          { font-size: 13px; }
+          .se-proj-val            { font-size: 13px; }
+
+          /* Predictions */
+          .pc-event               { font-size: 14px; }
+          .pc-predicted           { font-size: 28px; }
+          .pc-label               { font-size: 13px; }
+          .pc-conf                { font-size: 12px; }
+
+          /* Charts edge to edge on mobile */
+          .card:has(.recharts-responsive-container),
+          .chart-card {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+          }
+          .card:has(.recharts-responsive-container) h3,
+          .card:has(.recharts-responsive-container) .card-sub,
+          .chart-card h3, .chart-card .card-sub {
+            padding-left: 14px;
+            padding-right: 14px;
+          }
+          .recharts-responsive-container { width: 100% !important; }
+          .recharts-wrapper { width: 100% !important; }
+          .bottom-tab-icon svg    { width: 26px; height: 26px; }
+
+          /* General text */
+          p, li, span, div        { line-height: 1.5; }
+          .air-section p          { font-size: 14px; }
+          .air-title              { font-size: 14px; }
+          .it-body                { font-size: 13px; }
+          .it-row                 { font-size: 13px; }
+          .wep-label              { font-size: 13px; }
+          .wep-input              { font-size: 15px; }
+          .wep-type-btn           { font-size: 13px; }
+          .save-btn, .cancel-btn  { font-size: 14px; padding: 9px 16px; }
         }
 
         /* Very small phones */
@@ -5535,7 +5616,9 @@ function App() {
         .phone-frame-root .recovery-full { flex-direction: column; gap: 16px; }
         .phone-frame-root .recovery-divider { display: none; }
         .phone-frame-root .strain-explainer-grid { grid-template-columns: 1fr !important; }
-        .phone-frame-root .modal-overlay { align-items: flex-end; }
+        .phone-frame-root .chart-card { padding-left: 0 !important; padding-right: 0 !important; }
+        .phone-frame-root .chart-card h3,
+        .phone-frame-root .chart-card .card-sub { padding-left: 14px; padding-right: 14px; }
         .phone-frame-root .modal-box { border-radius: 20px 20px 0 0 !important; max-width: 100% !important; }
         .phone-frame-root .pred-cards { grid-template-columns: 1fr 1fr !important; }
         .phone-frame-root .row-2-inline { grid-template-columns: 1fr 1fr; }
@@ -5968,4 +6051,81 @@ function App() {
   );
 }
 
-export default App;
+// ─── PHONE FRAME WRAPPER ───────────────────────────────────────────────────────
+export default function PhoneFrame() {
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "#050505",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "24px 0",
+      fontFamily: "Inter, sans-serif",
+    }}>
+      {/* Phone shell */}
+      <div style={{
+        position: "relative",
+        width: 393,
+        height: 852,
+        background: "#1a1a1a",
+        borderRadius: 54,
+        boxShadow: `
+          0 0 0 1px #333,
+          0 0 0 2px #111,
+          0 30px 80px rgba(0,0,0,.8),
+          inset 0 0 0 2px #2a2a2a
+        `,
+        overflow: "hidden",
+        flexShrink: 0,
+      }}>
+        {/* Dynamic Island */}
+        <div style={{
+          position: "absolute",
+          top: 12,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 126,
+          height: 37,
+          background: "#000",
+          borderRadius: 20,
+          zIndex: 9999,
+        }} />
+
+        {/* Screen */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: 54,
+          overflow: "hidden",
+          background: "#0c0c0e",
+        }}>
+          {/* Force mobile breakpoint by constraining to 393px */}
+          <div style={{ width: 393, height: 852, overflow: "hidden", position: "relative" }} className="phone-frame-root">
+            <App />
+          </div>
+        </div>
+
+        {/* Side buttons — left */}
+        <div style={{ position: "absolute", left: -3, top: 120, width: 4, height: 36, background: "#2a2a2a", borderRadius: "2px 0 0 2px" }} />
+        <div style={{ position: "absolute", left: -3, top: 168, width: 4, height: 68, background: "#2a2a2a", borderRadius: "2px 0 0 2px" }} />
+        <div style={{ position: "absolute", left: -3, top: 248, width: 4, height: 68, background: "#2a2a2a", borderRadius: "2px 0 0 2px" }} />
+        {/* Power button — right */}
+        <div style={{ position: "absolute", right: -3, top: 180, width: 4, height: 90, background: "#2a2a2a", borderRadius: "0 2px 2px 0" }} />
+
+        {/* Home indicator */}
+        <div style={{
+          position: "absolute",
+          bottom: 10,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 134,
+          height: 5,
+          background: "rgba(255,255,255,.35)",
+          borderRadius: 3,
+          zIndex: 9999,
+        }} />
+      </div>
+    </div>
+  );
+}
