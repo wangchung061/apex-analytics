@@ -149,11 +149,11 @@ const StatCard = ({ label, value, sub, accent = "var(--accent)", delta }) => (
 const InfoStatCard = ({ label, value, sub, accent = "var(--accent)", delta, info }) => {
   const [show, setShow] = useState(false);
   const [pos, setPos]   = useState({ top: 0, left: 0, placement: "below" });
-  const iconRef = useRef(null);
+  const cardRef = useRef(null);
 
   const handleEnter = () => {
-    if (!iconRef.current) return;
-    const r = iconRef.current.getBoundingClientRect();
+    if (!info || !cardRef.current) return;
+    const r = cardRef.current.getBoundingClientRect();
     const tooltipW = 240;
     const placement = r.top > 300 ? "above" : "below";
     let left = r.left + r.width / 2 - tooltipW / 2;
@@ -165,21 +165,20 @@ const InfoStatCard = ({ label, value, sub, accent = "var(--accent)", delta, info
     setShow(true);
   };
 
+  const handleTap = () => {
+    if (!info) return;
+    if (show) { setShow(false); return; }
+    handleEnter();
+  };
+
   return (
-    <div className="stat-card info-stat-card">
-      {info && (
-        <span
-          ref={iconRef}
-          className="info-icon info-icon--corner"
-          onMouseEnter={handleEnter}
-          onMouseLeave={() => setShow(false)}
-        >
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <circle cx="6.5" cy="6.5" r="6" stroke="currentColor" strokeWidth="1.2"/>
-            <text x="6.5" y="10" textAnchor="middle" fill="currentColor" fontSize="8" fontWeight="700" fontFamily="'Inter', sans-serif">i</text>
-          </svg>
-        </span>
-      )}
+    <div
+      className={`stat-card info-stat-card ${info ? "info-stat-card--hoverable" : ""}`}
+      ref={cardRef}
+      onMouseEnter={handleEnter}
+      onMouseLeave={() => setShow(false)}
+      onClick={handleTap}
+    >
       <div className="stat-label">{label}</div>
       <div className="stat-value" style={{ color: accent }}>{value}</div>
       {sub && <div className="stat-sub">{sub}</div>}
@@ -449,13 +448,6 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
     readinessPct >= 55 ? "#e8ff47"  :
     readinessPct >= 35 ? "#f97316"  : "#ef4444";
 
-  // Greeting
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 5  ? "Good night" :
-    hour < 12 ? "Good morning" :
-    hour < 17 ? "Good afternoon" : "Good evening";
-
   // Last workout
   const lastWorkout = hasData
     ? [...uploadedWorkouts].sort((a,b) => new Date(b.date) - new Date(a.date))[0]
@@ -487,13 +479,50 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
   const circ = 2 * Math.PI * R;
   const dash = circ * (readinessPct / 100);
 
+
+  const QUOTES = [
+    { text: "The only bad workout is the one that didn't happen.", author: "Unknown" },
+    { text: "Champions aren't made in gyms. They're made from something deep inside them.", author: "Muhammad Ali" },
+    { text: "Run when you can, walk when you have to, crawl if you must. Just never give up.", author: "Dean Karnazes" },
+    { text: "It never gets easier. You just get stronger.", author: "Unknown" },
+    { text: "The body achieves what the mind believes.", author: "Unknown" },
+    { text: "Pain is temporary. Quitting lasts forever.", author: "Lance Armstrong" },
+    { text: "Every mile is two in winter.", author: "George Herbert" },
+    { text: "Your body can stand almost anything. It's your mind you have to convince.", author: "Unknown" },
+    { text: "The miracle isn't that I finished. The miracle is that I had the courage to start.", author: "John Bingham" },
+    { text: "Motivation gets you started. Habit keeps you going.", author: "Jim Ryun" },
+    { text: "Some seek the comfort of their therapist's office. Others head to the woods and run.", author: "Michael R. Mantell" },
+    { text: "Ask yourself: Can I give more? The answer is always yes.", author: "Beau Hightower" },
+    { text: "There will be days you don't think you can run a marathon. Those are the days you go.", author: "Unknown" },
+    { text: "No matter how slow you go, you're still lapping everyone on the couch.", author: "Unknown" },
+    { text: "Believe that you can run farther or faster. Believe that you're young enough, old enough, strong enough.", author: "Hal Higdon" },
+    { text: "You have a choice. You can throw in the towel or use it to wipe the sweat off your face.", author: "Unknown" },
+    { text: "First, master the fundamentals.", author: "Larry Bird" },
+    { text: "Do something today that your future self will thank you for.", author: "Unknown" },
+    { text: "The pain you feel today will be the strength you feel tomorrow.", author: "Unknown" },
+    { text: "Don't limit your challenges. Challenge your limits.", author: "Unknown" },
+    { text: "Gold medals aren't really made of gold. They're made of sweat, determination, and a hard-to-find alloy called guts.", author: "Dan Gable" },
+    { text: "If it doesn't challenge you, it won't change you.", author: "Fred DeVito" },
+    { text: "The difference between try and triumph is a little umph.", author: "Marvin Phillips" },
+    { text: "Success is usually just around the corner from where you stopped.", author: "Unknown" },
+    { text: "One run can change your day. Many runs can change your life.", author: "Unknown" },
+    { text: "Make each day your masterpiece.", author: "John Wooden" },
+    { text: "Hard work beats talent when talent doesn't work hard.", author: "Tim Notke" },
+    { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
+    { text: "Winning isn't everything, but wanting to win is.", author: "Vince Lombardi" },
+    { text: "The harder the battle, the sweeter the victory.", author: "Les Brown" },
+  ];
+
+  const dayIndex = Math.floor(Date.now() / 86400000) % QUOTES.length;
+  const todayQuote = QUOTES[dayIndex];
+
   return (
     <div className="dash-mobile">
 
-      {/* ── Greeting ── */}
-      <div className="dash-greeting">
-        <div className="dash-hello">{greeting},</div>
-        <div className="dash-name">{athlete.name.split(" ")[0]}</div>
+      {/* ── Daily quote ── */}
+      <div className="dash-quote">
+        <div className="dash-quote-text">"{todayQuote.text}"</div>
+        <div className="dash-quote-author">— {todayQuote.author}</div>
       </div>
 
       {/* ── Readiness focal card ── */}
@@ -617,7 +646,7 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
         <p className="card-sub">Fitness · Fatigue · Form — 90 days</p>
         {hasData ? (
           <ResponsiveContainer width="100%" height={180}>
-            <ComposedChart data={fitnessData}>
+            <ComposedChart margin={{ left: -16, right: 8, top: 4, bottom: 0 }} data={fitnessData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
               <XAxis dataKey="date" tick={{ fill: "var(--text3)", fontSize: 10 }} tickLine={false} interval={20} />
               <YAxis tick={{ fill: "var(--text3)", fontSize: 10 }} tickLine={false} axisLine={false} />
@@ -2015,7 +2044,7 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
       <div className="card full-width chart-card">
         <h3>Heart Rate & Pace</h3>
         <ResponsiveContainer width="100%" height={260}>
-          <ComposedChart data={hrStream}>
+          <ComposedChart margin={{ left: -16, right: 8, top: 4, bottom: 0 }} data={hrStream}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
             <XAxis dataKey="time" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false}
               tickFormatter={v => `${v}m`} />
@@ -2040,7 +2069,7 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
             info={{ title: "Normalised Power", body: "Statistically weighted average that accounts for power variability. Better reflects physiological cost than simple average on variable efforts.", footer: "NP > Avg Power means the effort was variable (intervals, hills)." }} />
         </div>
         <ResponsiveContainer width="100%" height={160}>
-          <AreaChart data={stream.map(p => ({ time: p.time, power: p.power }))}>
+          <AreaChart margin={{ left: -16, right: 8, top: 4, bottom: 0 }} data={stream.map(p => ({ time: p.time, power: p.power }))}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
             <XAxis dataKey="time" tick={{ fill: "#64748b", fontSize: 10 }} tickLine={false} tickFormatter={v => `${v}m`} />
             <YAxis tick={{ fill: "#64748b", fontSize: 10 }} tickLine={false} axisLine={false} domain={[140, 380]} />
@@ -2062,7 +2091,7 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
               info={{ title: "Max Cadence", body: "Peak steps per minute recorded during the session — typically at the fastest point of the run." }} />
           </div>
           <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={cadenceStream}>
+            <AreaChart margin={{ left: -16, right: 8, top: 4, bottom: 0 }} data={cadenceStream}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
               <XAxis dataKey="time" tick={{ fill: "#64748b", fontSize: 10 }} tickLine={false} tickFormatter={v => `${v}m`} />
               <YAxis tick={{ fill: "#64748b", fontSize: 10 }} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
@@ -2102,7 +2131,7 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
         <h3>Elevation Profile</h3>
         <p className="card-sub">+{elevLabel} gain</p>
         <ResponsiveContainer width="100%" height={180}>
-          <AreaChart data={elevStream}>
+          <AreaChart margin={{ left: -16, right: 8, top: 4, bottom: 0 }} data={elevStream}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
             <XAxis dataKey="dist" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false}
               tickFormatter={v => `${v}${distAxisUnit}`} />
@@ -2666,7 +2695,7 @@ const RecoverySection = ({ athlete, uploadedWorkouts }) => {
         <p className="card-sub">CTL = fitness (blue) · ATL = strain (orange) · TSB = form (lime)</p>
         {hasData ? (
           <ResponsiveContainer width="100%" height={240}>
-            <ComposedChart data={fitnessHistory}>
+            <ComposedChart margin={{ left: -16, right: 8, top: 4, bottom: 0 }} data={fitnessHistory}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
               <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} tickLine={false} interval={6} />
               <YAxis yAxisId="load" tick={{ fill: "#64748b", fontSize: 10 }} tickLine={false} axisLine={false} />
@@ -2732,687 +2761,6 @@ const FIELD_GROUPS = [
     ],
   },
 ];
-
-const AthleteView = ({ athlete, setAthlete, customZones, setCustomZones, units, setUnits, uploadedWorkouts = [] }) => {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState({ ...athlete });
-  const [saved, setSaved] = useState(false);
-  const [editingZones, setEditingZones] = useState(false);
-  const [zoneDraft, setZoneDraft] = useState([...customZones]);
-  const [zonesSaved, setZonesSaved] = useState(false);
-
-  // Keep zoneDraft in sync when customZones change externally (e.g. maxHR update)
-  const prevZones = useRef(customZones);
-  useEffect(() => {
-    if (prevZones.current !== customZones) {
-      prevZones.current = customZones;
-      setZoneDraft([...customZones]);
-    }
-  }, [customZones]);
-
-  const initials = draft.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
-
-  const handleChange = (key, value) => setDraft(prev => ({ ...prev, [key]: value }));
-
-  const handleSave = () => {
-    const parsed = { ...draft };
-    ["age","weight","height","maxHR","restingHR","lthr","hrv","ftp"].forEach(k => {
-      parsed[k] = parseInt(parsed[k]) || 0;
-    });
-    parsed.vo2max = parseFloat(parsed.vo2max) || 0;
-    setAthlete(parsed);
-    setEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
-
-  const handleCancel = () => { setDraft({ ...athlete }); setEditing(false); };
-
-  const handleZoneSave = () => {
-    // Validate: each bound must be > previous, all must be < maxHR
-    const vals = zoneDraft.map(v => parseInt(v) || 0);
-    for (let i = 1; i < vals.length; i++) {
-      if (vals[i] <= vals[i-1]) {
-        alert(`Zone ${i+1} upper limit must be greater than Zone ${i} (${vals[i-1]} bpm).`);
-        return;
-      }
-    }
-    if (vals[vals.length-1] >= a.maxHR) {
-      alert(`Zone 4 upper limit must be below your Max HR (${a.maxHR} bpm).`);
-      return;
-    }
-    setCustomZones(vals);
-    setEditingZones(false);
-    setZonesSaved(true);
-    setTimeout(() => setZonesSaved(false), 2500);
-  };
-
-  const handleZoneCancel = () => { setZoneDraft([...customZones]); setEditingZones(false); };
-
-  const handleResetZones = () => {
-    const maxHR     = parseInt(a.maxHR)     || athlete.maxHR;
-    const restingHR = parseInt(a.restingHR) || athlete.restingHR;
-    const hrr       = Math.max(maxHR - restingHR, 1);
-    setZoneDraft([0.60, 0.70, 0.80, 0.90].map(p => Math.round(restingHR + hrr * p)));
-  };
-
-  const a = editing ? draft : athlete;
-
-  // ── AI-estimated performance metrics ────────────────────────────────────
-  // Run whenever the displayed athlete values change (editing or saved)
-  const estimatedMetrics = useMemo(() => {
-    const maxHR     = parseInt(a.maxHR)     || 190;
-    const restingHR = parseInt(a.restingHR) || 50;
-    const age       = parseInt(a.age)       || 30;
-    const weightKg  = ((parseInt(a.weight) || 154) * 0.453592);
-    const hrr       = Math.max(maxHR - restingHR, 1);
-
-    // LTHR — Friel formula: ~85-90% of max HR for trained runners
-    // More precise: LTHR ≈ restingHR + HRR * 0.85 (Karvonen at 85%)
-    const estimatedLTHR = Math.round(restingHR + hrr * 0.85);
-
-    // VO2max — multiple formula approaches:
-    // 1. Uth-Sørensen-Overgaard-Pedersen: VO2max ≈ 15 × (HRmax / HRrest)
-    const vo2maxUth = parseFloat((15 * (maxHR / restingHR)).toFixed(1));
-    // 2. Age-based normative (Jackson et al): gender-adjusted
-    const genderAdj = a.gender === "Female" ? -7.9 : 0;
-    const vo2maxAge = parseFloat((52 - 0.185 * age + genderAdj).toFixed(1));
-    // Blend both HR/age methods
-    const estimatedVO2max = parseFloat(((vo2maxUth * 0.6 + vo2maxAge * 0.4)).toFixed(1));
-
-    // FTP — estimated from LTHR via empirical relationship for runners with power meters
-    // Running FTP (watts) ≈ body weight (kg) × pace-based multiplier
-    // Using HR-based proxy: FTP ≈ weight_kg × 3.5 × (LTHR/maxHR)
-    const estimatedFTP = Math.round(weightKg * 3.5 * (estimatedLTHR / maxHR));
-
-    return {
-      lthr:   { value: estimatedLTHR,  formula: `Karvonen 85% HRR (${restingHR} + ${hrr}×0.85)` },
-      vo2max: { value: estimatedVO2max, formula: `Uth-Sørensen (15×${maxHR}/${restingHR}) + age norms blend` },
-      ftp:    { value: estimatedFTP,    formula: `HR-weight proxy (${weightKg.toFixed(0)} kg × 3.5 × LTHR ratio)` },
-    };
-  }, [a.maxHR, a.restingHR, a.age, a.weight, a.gender]);
-
-  // Performance-based VO2max from uploaded workouts (Jack Daniels VDOT)
-  const perfVO2max = useMemo(() => calcVO2maxFromWorkouts(uploadedWorkouts), [uploadedWorkouts]);
-
-  // Helper: returns actual value if entered, otherwise performance-based, otherwise estimated
-  const resolvedLTHR   = (parseInt(a.lthr)    || 0) > 0 ? { value: parseInt(a.lthr),       estimated: false }
-                       : { ...estimatedMetrics.lthr,   estimated: true };
-  const resolvedVO2max = (parseFloat(a.vo2max) || 0) > 0 ? { value: parseFloat(a.vo2max),  estimated: false, source: "manual" }
-                       : perfVO2max                       ? { value: perfVO2max.value,       estimated: true,  source: "performance", run: perfVO2max.run }
-                       : { ...estimatedMetrics.vo2max,     estimated: true,  source: "hr" };
-  const resolvedFTP    = (parseInt(a.ftp)      || 0) > 0 ? { value: parseInt(a.ftp),        estimated: false }
-                       : { ...estimatedMetrics.ftp,    estimated: true };
-
-  // While editing, preview zone boundaries live from draft values (if zones are still at defaults)
-  const previewBounds = (() => {
-    if (!editing) return customZones;
-    const draftMaxHR     = parseInt(draft.maxHR)     || athlete.maxHR;
-    const draftRestingHR = parseInt(draft.restingHR) || athlete.restingHR;
-    const karvonenBounds = (mhr, rhr) => {
-      const hrr = Math.max(mhr - rhr, 1);
-      return [0.60, 0.70, 0.80, 0.90].map(p => Math.round(rhr + hrr * p));
-    };
-    const oldDefaults = karvonenBounds(athlete.maxHR, athlete.restingHR);
-    const isDefault = customZones.every((v, i) => v === oldDefaults[i]);
-    if (isDefault) return karvonenBounds(draftMaxHR, draftRestingHR);
-    return customZones;
-  })();
-
-  // Build live zone display from previewBounds (live during edit, saved otherwise)
-  const zoneDisplay = [
-    { name: "Z1 Recovery",  range: `< ${previewBounds[0]} bpm`,                                    color: HR_ZONE_COLORS[0] },
-    { name: "Z2 Aerobic",   range: `${previewBounds[0]}–${previewBounds[1]} bpm`,                  color: HR_ZONE_COLORS[1] },
-    { name: "Z3 Tempo",     range: `${previewBounds[1]}–${previewBounds[2]} bpm`,                  color: HR_ZONE_COLORS[2] },
-    { name: "Z4 Threshold", range: `${previewBounds[2]}–${previewBounds[3]} bpm`,                  color: HR_ZONE_COLORS[3] },
-    { name: "Z5 VO2max+",   range: `> ${previewBounds[3]} bpm`,                                    color: HR_ZONE_COLORS[4] },
-  ];
-
-  const ZONE_LABELS = ["Z1 Recovery", "Z2 Aerobic", "Z3 Tempo", "Z4 Threshold"];
-
-  return (
-    <div className="view-grid">
-      {/* Profile header card */}
-      <div className="card athlete-profile-card">
-        <div className="athlete-avatar">{initials}</div>
-        <div className="athlete-info" style={{ flex: 1 }}>
-          <h2>{athlete.name}</h2>
-          <div className="athlete-goal"><Icon name="target" size={12} style={{marginRight:5}} />{athlete.goal}</div>
-          <div className="athlete-meta">
-            {athlete.age}y · {athlete.weight} lbs · {fmtHeight(athlete.height)} · {athlete.gender}
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {saved && <span className="save-confirm">✓ Saved</span>}
-          {!editing ? (
-            <button className="edit-btn" onClick={() => { setDraft({ ...athlete }); setEditing(true); }}>
-              ✎ Edit Profile
-            </button>
-          ) : (
-            <>
-              <button className="cancel-btn" onClick={handleCancel}>Cancel</button>
-              <button className="save-btn" onClick={handleSave}>Save Changes</button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Edit form */}
-      {editing && (
-        <div className="card full-width edit-form-card">
-          <h3>Edit Athlete Profile</h3>
-          <p className="card-sub">Changes will update your training zones and analytics in real time</p>
-          <div className="edit-groups">
-            {FIELD_GROUPS.map(group => (
-              <div key={group.title} className="edit-group">
-                <div className="eg-title">{group.title}</div>
-                <div className="eg-fields">
-                  {group.fields.map(f => (
-                    <div key={f.key} className="ef-row">
-                      <label className="ef-label">{f.label}</label>
-                      <div className="ef-input-wrap">
-                        {f.type === "select" ? (
-                          <select className="ef-select" value={draft[f.key]} onChange={e => handleChange(f.key, e.target.value)}>
-                            {f.options.map(o => <option key={o}>{o}</option>)}
-                          </select>
-                        ) : (
-                          <input className="ef-input" type={f.type} step={f.step || "1"} value={draft[f.key]} onChange={e => handleChange(f.key, e.target.value)} />
-                        )}
-                        {f.unit && <span className="ef-unit">{f.unit}</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="edit-actions">
-            <button className="cancel-btn" onClick={handleCancel}>Cancel</button>
-            <button className="save-btn" onClick={handleSave}>✓ Save Changes</button>
-          </div>
-        </div>
-      )}
-
-      {/* Physiological data — shows estimated values when fields are blank */}
-      <div className="card">
-        <h3>Physiological Data</h3>
-        <p className="card-sub">Values marked <span className="est-badge-inline">AI est.</span> are calculated from your profile — enter known values in Edit Profile to override</p>
-        <div className="phys-list" style={{ marginTop: 10 }}>
-          {[
-            { label: "FTP",    resolved: resolvedFTP,    unit: "W",          hint: resolvedFTP.estimated    ? resolvedFTP.formula    : null },
-          ].map(({ label, resolved, unit, hint }) => (
-            <div key={label} className="phys-row">
-              <span className="phys-key">{label}</span>
-              <span className="phys-val" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {resolved.value} {unit}
-                {resolved.estimated && <span className="est-badge">AI est.</span>}
-              </span>
-              {hint && <span className="phys-hint" title={hint}>ℹ formula</span>}
-            </div>
-          ))}
-
-          {/* VO2max — special display with source info */}
-          <div className="phys-row phys-row--vo2max">
-            <span className="phys-key">VO2max</span>
-            <span className="phys-val" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {resolvedVO2max.value} ml/kg/min
-              {resolvedVO2max.source === "performance" && <span className="est-badge est-badge--perf">VDOT</span>}
-              {resolvedVO2max.source === "hr"          && <span className="est-badge">AI est.</span>}
-            </span>
-            {resolvedVO2max.source === "performance" && resolvedVO2max.run && (
-              <span className="phys-hint" title={`Jack Daniels VDOT formula · Best run: ${resolvedVO2max.run.name} (${resolvedVO2max.run.distance} km)`}>
-                ℹ from {resolvedVO2max.run.name}
-              </span>
-            )}
-            {resolvedVO2max.source === "hr" && (
-              <span className="phys-hint" title={estimatedMetrics.vo2max.formula}>ℹ formula</span>
-            )}
-          </div>
-          {resolvedVO2max.source === "performance" && (
-            <div className="vo2max-source-note">
-              Calculated via Jack Daniels VDOT from your best effort run: <strong>{resolvedVO2max.run?.name}</strong> ({resolvedVO2max.run?.distance} km · {fmtPace(resolvedVO2max.run?.avgPace)}{units.distance === "km" ? "/km" : "/mi"} avg pace).
-              Import faster runs or longer efforts to improve accuracy.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* HR zones — live, editable */}
-      <div className="card">
-        <div className="zone-card-header">
-          <div>
-            <h3>HR Training Zones</h3>
-            <p className="card-sub" style={{ marginBottom: 0, fontSize: 11 }}>Karvonen method · HRR = {a.maxHR} − {a.restingHR} = {Math.max((parseInt(a.maxHR)||0) - (parseInt(a.restingHR)||0), 0)} bpm</p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {zonesSaved && <span className="save-confirm">✓ Saved</span>}
-            {!editingZones ? (
-              <button className="edit-btn" onClick={() => { setZoneDraft([...previewBounds]); setEditingZones(true); }}>
-                ✎ Edit Zones
-              </button>
-            ) : (
-              <>
-                <button className="edit-btn" onClick={handleResetZones} title="Reset to Karvonen defaults">↺ Reset</button>
-                <button className="cancel-btn" onClick={handleZoneCancel}>Cancel</button>
-                <button className="save-btn" onClick={handleZoneSave}>✓ Save</button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* HR stats row */}
-        <div className="hr-stats-row">
-          {[
-            { label: "Max HR",     value: `${a.maxHR} bpm`,      estimated: false },
-            { label: "Resting HR", value: `${a.restingHR} bpm`,  estimated: false },
-            { label: "LTHR",       value: `${resolvedLTHR.value} bpm`, estimated: resolvedLTHR.estimated },
-            { label: "HRV",        value: `${a.hrv} ms`,         estimated: false },
-          ].map(({ label, value, estimated }) => (
-            <div key={label} className="hr-stat-chip">
-              <span className="hr-stat-label">
-                {label}
-                {estimated && <span className="est-dot" title="AI estimated">●</span>}
-              </span>
-              <span className="hr-stat-val">{value}</span>
-            </div>
-          ))}
-        </div>
-
-        {!editingZones ? (
-          <div className="zone-table" style={{ marginTop: 12 }}>
-            {zoneDisplay.map(z => (
-              <div key={z.name} className="zone-row">
-                <span className="zone-dot" style={{ background: z.color }} />
-                <span className="zone-name">{z.name}</span>
-                <span className="zone-range">{z.range}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="zone-edit-table" style={{ marginTop: 12 }}>
-            <p className="card-sub" style={{ marginBottom: 10 }}>Defaults use the Karvonen method (HRR-based). Edit upper BPM boundary for each zone — Z5 starts above Z4.</p>
-            {ZONE_LABELS.map((label, i) => (
-              <div key={label} className="zone-edit-row">
-                <span className="zone-dot" style={{ background: HR_ZONE_COLORS[i] }} />
-                <span className="zone-edit-label">{label} upper limit</span>
-                <div className="zone-edit-input-wrap">
-                  <input
-                    className="ef-input zone-edit-input"
-                    type="number"
-                    min={i === 0 ? 60 : (parseInt(zoneDraft[i-1]) || 0) + 1}
-                    max={a.maxHR - 1}
-                    value={zoneDraft[i]}
-                    onChange={e => {
-                      const next = [...zoneDraft];
-                      next[i] = e.target.value;
-                      setZoneDraft(next);
-                    }}
-                  />
-                  <span className="ef-unit">bpm</span>
-                </div>
-                <span className="zone-edit-pct">
-                  {a.maxHR > 0 ? `${Math.round((parseInt(zoneDraft[i]) || 0) / a.maxHR * 100)}%` : "—"}
-                </span>
-              </div>
-            ))}
-            <div className="zone-edit-row zone-edit-z5">
-              <span className="zone-dot" style={{ background: HR_ZONE_COLORS[4] }} />
-              <span className="zone-edit-label">Z5 VO2max+</span>
-              <span className="zone-edit-auto">&gt; {zoneDraft[3] || customZones[3]} bpm (auto)</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Preferences */}
-      <div className="card">
-        <h3>Display Preferences</h3>
-        <p className="card-sub">Choose how units are shown across all views</p>
-        <div className="prefs-list">
-          <div className="pref-row">
-            <span className="pref-label">Distance</span>
-            <div className="pref-toggle">
-              {["km", "mi"].map(opt => (
-                <button
-                  key={opt}
-                  className={`pref-btn ${units.distance === opt ? "active" : ""}`}
-                  onClick={() => setUnits(u => ({ ...u, distance: opt }))}
-                >{opt}</button>
-              ))}
-            </div>
-          </div>
-          <div className="pref-row">
-            <span className="pref-label">Altitude</span>
-            <div className="pref-toggle">
-              {["ft", "m"].map(opt => (
-                <button
-                  key={opt}
-                  className={`pref-btn ${units.altitude === opt ? "active" : ""}`}
-                  onClick={() => setUnits(u => ({ ...u, altitude: opt }))}
-                >{opt}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Power zones — live from resolvedFTP */}
-      <div className="card">
-        <h3>Power Zones
-          {resolvedFTP.estimated
-            ? <span className="est-badge" style={{ marginLeft: 8, verticalAlign: "middle" }}>AI est.</span>
-            : null}
-          {" "}(FTP: {resolvedFTP.value}W)
-        </h3>
-        <div className="zone-table">
-          {[
-            { name: "Z1 Active Rec", pct: "<55%",     watts: `<${Math.round(resolvedFTP.value * 0.55)}W` },
-            { name: "Z2 Endurance",  pct: "55-75%",   watts: `${Math.round(resolvedFTP.value * 0.55)}–${Math.round(resolvedFTP.value * 0.75)}W` },
-            { name: "Z3 Tempo",      pct: "75-90%",   watts: `${Math.round(resolvedFTP.value * 0.75)}–${Math.round(resolvedFTP.value * 0.90)}W` },
-            { name: "Z4 Threshold",  pct: "90-105%",  watts: `${Math.round(resolvedFTP.value * 0.90)}–${Math.round(resolvedFTP.value * 1.05)}W` },
-            { name: "Z5 VO2max",     pct: "105-120%", watts: `${Math.round(resolvedFTP.value * 1.05)}–${Math.round(resolvedFTP.value * 1.20)}W` },
-            { name: "Z6 Anaerobic",  pct: ">120%",    watts: `>${Math.round(resolvedFTP.value * 1.20)}W` },
-          ].map((z, i) => (
-            <div key={z.name} className="zone-row">
-              <span className="zone-dot" style={{ background: HR_ZONE_COLORS[Math.min(i, 4)] }} />
-              <span className="zone-name">{z.name}</span>
-              <span className="zone-range">{z.watts}</span>
-              <span className="zone-pct">{z.pct} FTP</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
-const WORKOUT_TYPE_COLOR = {
-  Run: "var(--accent)",
-  Ride: "#38bdf8",
-  Swim: "#a78bfa",
-  Strength: "#f97316",
-};
-
-// Build a richer set of mock workouts spread across the past 2 months
-const TrendsView = ({ onSelectWorkout, uploadedWorkouts = [], units, athlete, resolvedAthleteMetrics }) => {
-
-  const hasData = uploadedWorkouts.length > 0;
-
-  // Pace trend — one point per workout sorted by date
-  const paceTrend = [...uploadedWorkouts]
-    .filter(w => w.avgPace)
-    .sort((a,b) => new Date(a.date) - new Date(b.date))
-    .map(w => ({
-      date: new Date(w.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      pace: units.distance === "mi" ? w.avgPace : Math.round(w.avgPace * 0.621371),
-      hr: w.avgHR,
-      name: w.name,
-    }));
-
-  // HR trend
-  const hrTrend = paceTrend.filter(p => p.hr);
-
-  // Weekly volume
-  const weeklyMap = {};
-  uploadedWorkouts.forEach(w => {
-    const d = new Date(w.date + "T12:00:00");
-    const ws = new Date(d); ws.setDate(d.getDate() - d.getDay());
-    const key = ws.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    if (!weeklyMap[key]) weeklyMap[key] = { week: key, dist: 0, tss: 0 };
-    const dist = units.distance === "mi" ? (w.distance || 0) * 0.621371 : (w.distance || 0);
-    weeklyMap[key].dist = parseFloat((weeklyMap[key].dist + dist).toFixed(1));
-    weeklyMap[key].tss += (w.tss || 0);
-  });
-  const weeklyLoad = Object.values(weeklyMap).sort((a,b) => new Date(a.week) - new Date(b.week)).slice(-12);
-  const distUnit = units.distance === "mi" ? "mi" : "km";
-
-  const today = new Date(); // real current date
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const [selectedDay, setSelectedDay] = useState(null);
-
-  const prevMonth = () => {
-    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
-    else setCurrentMonth(m => m - 1);
-    setSelectedDay(null);
-  };
-  const nextMonth = () => {
-    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1); }
-    else setCurrentMonth(m => m + 1);
-    setSelectedDay(null);
-  };
-
-  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const monthName = new Date(currentYear, currentMonth).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-
-  // Map workouts to date strings
-  const workoutsByDate = {};
-  uploadedWorkouts.forEach(w => {
-    if (!workoutsByDate[w.date]) workoutsByDate[w.date] = [];
-    workoutsByDate[w.date].push(w);
-  });
-
-  const dateKey = (d) => {
-    const mm = String(currentMonth + 1).padStart(2, "0");
-    const dd = String(d).padStart(2, "0");
-    return `${currentYear}-${mm}-${dd}`;
-  };
-
-  // Weekly totals — group by ISO week within the current month view
-  const getWeeklyStats = () => {
-    const weeks = [];
-    let weekStart = 1 - firstDay; // day index of first cell
-    for (let w = 0; w < 6; w++) {
-      let kmTotal = 0, count = 0;
-      for (let d = 0; d < 7; d++) {
-        const day = weekStart + d;
-        if (day >= 1 && day <= daysInMonth) {
-          const ws = workoutsByDate[dateKey(day)] || [];
-          ws.forEach(wo => { kmTotal += wo.distance || 0; count += 1; });
-        }
-      }
-      if (weekStart <= daysInMonth && weekStart + 6 >= 1) {
-        weeks.push({ kmTotal: parseFloat(kmTotal.toFixed(1)), count });
-      }
-      weekStart += 7;
-    }
-    return weeks;
-  };
-  const weeklyStats = getWeeklyStats();
-
-  const selectedWorkouts = selectedDay ? (workoutsByDate[selectedDay] || []) : [];
-
-  const cells = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  const isToday = (d) => {
-    return d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
-  };
-
-  const monthTotalKm = Object.entries(workoutsByDate)
-    .filter(([date]) => date.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`))
-    .reduce((sum, [, ws]) => sum + ws.reduce((s, w) => s + (w.distance || 0), 0), 0)
-    .toFixed(1);
-
-  const monthWorkoutCount = Object.entries(workoutsByDate)
-    .filter(([date]) => date.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`))
-    .reduce((sum, [, ws]) => sum + ws.length, 0);
-
-  const monthTSS = Object.entries(workoutsByDate)
-    .filter(([date]) => date.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`))
-    .reduce((sum, [, ws]) => sum + ws.reduce((s, w) => s + (w.tss || 0), 0), 0);
-
-  return (
-    <div className="view-grid">
-      {/* Month summary stats */}
-      <div className="row-3-nowrap">
-        <InfoStatCard label="Month Distance" value={fmtDist(parseFloat(monthTotalKm), units)} accent="var(--accent)"
-          info={{ title: "Month Distance", body: `Total distance logged across all sessions in ${monthName}.`, footer: "Tap any day on the calendar to see individual workouts." }} />
-        <InfoStatCard label="Sessions" value={monthWorkoutCount} sub="this month" accent="#38bdf8"
-          info={{ title: "Sessions This Month", body: `Number of logged workouts in ${monthName}. Includes all activity types.` }} />
-        <InfoStatCard label="Month TSS" value={monthTSS} sub="training stress" accent="#a78bfa"
-          info={{ title: "Month TSS", body: "Total Training Stress Score for the month. Reflects combined volume and intensity of all sessions.", rows: [{ key: "Low month", val: "< 500 TSS" }, { key: "Moderate", val: "500–1000 TSS" }, { key: "High", val: "> 1000 TSS" }], footer: "Compare month-to-month to track loading trends." }} />
-      </div>
-
-      {/* Calendar card */}
-      <div className="card full-width cal-card">
-        {/* Header */}
-        <div className="cal-header">
-          <button className="cal-nav-btn" onClick={prevMonth}>‹</button>
-          <h3 style={{ marginBottom: 0 }}>{monthName}</h3>
-          <button className="cal-nav-btn" onClick={nextMonth}>›</button>
-        </div>
-
-        {/* Day-of-week labels + week totals column */}
-        <div className="cal-grid-wrap">
-          <div className="cal-grid">
-            {/* Day headers */}
-            {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-              <div key={d} className="cal-dow">{d}</div>
-            ))}
-
-            {/* Day cells */}
-            {cells.map((day, i) => {
-              if (!day) return <div key={`empty-${i}`} className="cal-cell empty" />;
-              const dk = dateKey(day);
-              const dayWorkouts = workoutsByDate[dk] || [];
-              const isSelected = selectedDay === dk;
-              const isTod = isToday(day);
-              const dayKm = dayWorkouts.reduce((s, w) => s + (w.distance || 0), 0);
-
-              return (
-                <div
-                  key={dk}
-                  className={`cal-cell ${dayWorkouts.length ? "has-workout" : ""} ${isSelected ? "selected" : ""} ${isTod ? "today" : ""}`}
-                  onClick={() => setSelectedDay(isSelected ? null : dk)}
-                >
-                  <div className="cal-day-num">{day}</div>
-                  {dayWorkouts.length > 0 && (
-                    <div className="cal-dots">
-                      {dayWorkouts.map((w, wi) => (
-                        <span key={wi} className="cal-dot" style={{ background: WORKOUT_TYPE_COLOR[w.type] || "#64748b" }} />
-                      ))}
-                    </div>
-                  )}
-                  {dayKm > 0 && (
-                    <div className="cal-day-km">{units.distance === "mi" ? (dayKm * 0.621371).toFixed(1) : dayKm.toFixed(1)}</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Weekly totals sidebar */}
-          <div className="cal-week-totals">
-            <div className="cwt-header">Week</div>
-            {weeklyStats.map((w, i) => {
-              const dispKm = units.distance === "mi" ? (w.kmTotal * 0.621371).toFixed(1) : w.kmTotal;
-              const dispUnit = units.distance === "mi" ? "mi" : "km";
-              return (
-                <div key={i} className="cwt-row">
-                  <div className="cwt-km">{w.kmTotal > 0 ? dispKm : "—"}</div>
-                  <div className="cwt-unit">{w.kmTotal > 0 ? dispUnit : ""}</div>
-                  {w.count > 0 && <div className="cwt-sessions">{w.count} {w.count === 1 ? "session" : "sessions"}</div>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Selected day workout detail */}
-      {selectedDay && (
-        <div className="card full-width">
-          <h3>{new Date(selectedDay + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</h3>
-          {selectedWorkouts.length === 0 ? (
-            <p className="card-sub" style={{ marginTop: 12 }}>Rest day — no workouts logged.</p>
-          ) : (
-            <div className="cal-workout-list">
-              {selectedWorkouts.map(w => (
-                <div key={w.id} className="cal-workout-item" onClick={() => w.stream && onSelectWorkout(w)}>
-                  <div className="cwi-type-dot" style={{ background: WORKOUT_TYPE_COLOR[w.type] || "#64748b" }} />
-                  <div className="cwi-info">
-                    <div className="cwi-name">{w.name}</div>
-                    <div className="cwi-meta">
-                      {w.distance > 0 && <span>{fmtDist(w.distance, units)}</span>}
-                      <span>{fmtDuration(w.duration)}</span>
-                      {w.avgHR && <span>{w.avgHR} bpm avg</span>}
-                      <span>TSS {w.tss}</span>
-                    </div>
-                  </div>
-                  {w.stream && <div className="cwi-arrow">›</div>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      <div className="row-2-inline" style={{ gap: 16 }}>
-        <InfoStatCard label="Current HRV" value={athlete.hrv} sub="ms" accent="#38bdf8"
-          info={{ title: "Heart Rate Variability", body: "Millisecond variation between heartbeats. Higher HRV = better autonomic recovery and readiness.", rows: [{ key: "< 50 ms", val: "Low" }, { key: "50–80 ms", val: "Average" }, { key: "> 80 ms", val: "High" }], footer: "HRV naturally varies — track your personal trend, not a fixed target." }} />
-        <InfoStatCard label="Resting HR" value={athlete.restingHR} sub="bpm" accent="var(--accent)"
-          info={{ title: "Resting Heart Rate", body: "Heart rate measured at complete rest. Lower RHR generally indicates better cardiovascular fitness.", rows: [{ key: "Elite", val: "< 40 bpm" }, { key: "Trained", val: "40–55 bpm" }, { key: "Average", val: "55–70 bpm" }], footer: "A sudden rise in RHR (3–5 bpm above baseline) can signal fatigue or illness." }} />
-      </div>
-
-      {paceTrend.length > 1 && (
-        <div className="card full-width chart-card">
-          <h3>Pace Trend</h3>
-          <p className="card-sub">Average pace per session ({units.distance === "mi" ? "min/mi" : "min/km"})</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={paceTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => fmtPace(v)} domain={['auto','auto']} />
-              <Tooltip content={<CustomTooltip formatter={v => fmtPace(v)} />} />
-              <Line type="monotone" dataKey="pace" stroke="#e8ff47" strokeWidth={2} name="Avg Pace" dot={{ fill: "#e8ff47", r: 3 }} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {hrTrend.length > 1 && (
-        <div className="card full-width chart-card">
-          <h3>Heart Rate Trend</h3>
-          <p className="card-sub">Average HR per session</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <ComposedChart data={hrTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} domain={['auto','auto']} />
-              <Tooltip content={<CustomTooltip formatter={v => `${v} bpm`} />} />
-              <Line type="monotone" dataKey="hr" stroke="#f97316" strokeWidth={2} name="Avg HR" dot={{ fill: "#f97316", r: 3 }} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {weeklyLoad.length > 0 && (
-        <div className="card full-width chart-card">
-          <h3>Weekly Volume</h3>
-          <p className="card-sub">Distance & training stress by week</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={weeklyLoad}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="week" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} />
-              <YAxis yAxisId="left" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip formatter={(v,n) => n === "dist" ? `${v} ${distUnit}` : v} />} />
-              <Bar yAxisId="left" dataKey="dist" fill="rgba(232,255,71,.25)" stroke="#e8ff47" strokeWidth={1} name="dist" radius={[4,4,0,0]} />
-              <Line yAxisId="right" type="monotone" dataKey="tss" stroke="#f97316" strokeWidth={2} name="TSS" dot={{ fill: "#f97316", r: 3 }} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* ── Race Predictions ── */}
-      <PredictionsSection athlete={athlete} uploadedWorkouts={uploadedWorkouts} units={units} resolvedAthleteMetrics={resolvedAthleteMetrics} />
-
-    </div>
-  );
-};
 
 // ─── GEAR VIEW ────────────────────────────────────────────────────────────────
 const GearView = ({ shoes, setShoes, uploadedWorkouts, units, defaultShoeId, setDefaultShoeId }) => {
@@ -4261,7 +3609,7 @@ function App() {
           .view-grid { gap: 12px; }
           .row-3, .row-4, .row-6, .row-7 { grid-template-columns: repeat(2, 1fr); gap: 10px; }
           .row-2-inline { grid-template-columns: 1fr 1fr; gap: 10px; }
-          .card { border-radius: 12px; padding: 16px 14px; }
+          .card:not(.chart-card) { border-radius: 12px; padding: 16px 14px; }
           .full-width { width: 100%; }
 
           /* ── Mobile font scale-up ── */
@@ -4272,9 +3620,9 @@ function App() {
           .stat-value             { font-size: 28px; }
           .stat-sub               { font-size: 12px; }
 
-          /* Dashboard */
-          .dash-hello             { font-size: 16px; }
-          .dash-name              { font-size: 38px; }
+          /* Dashboard quote */
+          .dash-quote-text        { font-size: 16px; }
+          .dash-quote-author      { font-size: 13px; }
           .drc-label              { font-size: 12px; }
           .drc-suggestion         { font-size: 15px; }
           .drc-stat-val           { font-size: 24px; }
@@ -4320,20 +3668,7 @@ function App() {
           .pc-label               { font-size: 13px; }
           .pc-conf                { font-size: 12px; }
 
-          /* Charts edge to edge on mobile */
-          .card:has(.recharts-responsive-container),
-          .chart-card {
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-          }
-          .card:has(.recharts-responsive-container) h3,
-          .card:has(.recharts-responsive-container) .card-sub,
-          .chart-card h3, .chart-card .card-sub {
-            padding-left: 14px;
-            padding-right: 14px;
-          }
-          .recharts-responsive-container { width: 100% !important; }
-          .recharts-wrapper { width: 100% !important; }
+          .chart-card h3, .chart-card .card-sub, .chart-card > p { padding-left: 14px; padding-right: 14px; }
           .bottom-tab-icon svg    { width: 26px; height: 26px; }
 
           /* General text */
@@ -4362,6 +3697,20 @@ function App() {
           padding: 20px 22px;
           overflow: visible;
         }
+
+        /* Chart cards — zero horizontal padding so graphs go edge to edge */
+        .chart-card {
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+        }
+        .chart-card h3,
+        .chart-card .card-sub,
+        .chart-card > p {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+        .recharts-responsive-container { width: 100% !important; }
+        .recharts-surface { overflow: visible; }
         
         .card.full-width { width: 100%; }
         
@@ -4384,14 +3733,16 @@ function App() {
         /* ── DASHBOARD MOBILE ──────────────────────────────────────── */
         .dash-mobile { display: flex; flex-direction: column; gap: 14px; padding-top: 48px; }
 
-        .dash-greeting { padding: 4px 2px 0; text-align: center; }
-        .dash-hello {
-          font-size: 13px; color: var(--text3); font-weight: 400; letter-spacing: 0.2px;
+        .dash-quote {
+          padding: 4px 2px 0;
         }
-        .dash-name {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-size: 32px; font-weight: 800; color: var(--text1);
-          letter-spacing: -0.5px; line-height: 1.05;
+        .dash-quote-text {
+          font-size: 15px; color: var(--text2); font-style: italic;
+          line-height: 1.5; letter-spacing: 0.1px;
+        }
+        .dash-quote-author {
+          font-size: 12px; color: var(--text3); margin-top: 6px;
+          font-weight: 500;
         }
 
         /* Readiness card */
@@ -4534,7 +3885,7 @@ function App() {
         /* HR ZONES */
         .hr-zone-bar {
           display: flex;
-          height: 24px;
+          height: 30px;
           border-radius: 6px;
           overflow: hidden;
           margin-bottom: 16px;
@@ -4544,17 +3895,17 @@ function App() {
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 700;
           color: #000;
           transition: all 0.3s;
         }
         
-        .zone-legend { display: flex; flex-direction: column; gap: 8px; }
-        .zl-item { display: flex; align-items: center; gap: 10px; font-size: 12px; }
-        .zl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .zone-legend { display: flex; flex-direction: column; gap: 10px; }
+        .zl-item { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+        .zl-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
         .zl-name { flex: 1; color: var(--text2); }
-        .zl-pct { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; color: var(--text3); }
+        .zl-pct { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; color: var(--text3); }
         
         /* QUALITY BADGE */
         .quality-badge-wrap {
@@ -4624,6 +3975,13 @@ function App() {
           text-align: center;
           position: relative;
         }
+        .info-stat-card--hoverable {
+          cursor: pointer;
+          transition: border-color .15s;
+        }
+        .info-stat-card--hoverable:hover {
+          border-color: rgba(255,255,255,.2);
+        }
         .info-stat-card .stat-label {
           display: block;
           text-align: center;
@@ -4639,15 +3997,6 @@ function App() {
         .info-stat-card .stat-sub {
           justify-content: center; text-align: center;
         }
-        .info-icon--corner {
-          position: absolute;
-          top: 7px; right: 7px;
-          display: inline-flex; align-items: center;
-          color: var(--text3); cursor: default;
-          transition: color .15s;
-          z-index: 1;
-        }
-        .info-icon--corner:hover { color: var(--text1); }
         .info-icon {
           display: inline-flex; align-items: center;
           color: var(--text3); cursor: default; flex-shrink: 0;
@@ -4964,26 +4313,26 @@ function App() {
           display: grid;
           grid-template-columns: 36px 90px 72px 90px 72px;
           gap: 0; align-items: center;
-          padding: 7px 8px;
+          padding: 10px 8px;
         }
         .lap-header {
-          font-size: 10px; text-transform: uppercase; letter-spacing: .07em;
+          font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
           color: var(--text3); border-bottom: 1px solid var(--card-border);
-          padding-bottom: 8px;
+          padding-bottom: 10px;
         }
         .lap-row {
-          font-size: 10px; border-bottom: 1px solid var(--card-border);
+          font-size: 14px; border-bottom: 1px solid var(--card-border);
           transition: background .1s;
         }
         .lap-row:hover { background: #ffffff05; }
         .lap-even { background: #ffffff02; }
-        .lap-num  { color: var(--text3); font-size: 10px; }
-        .lap-dist { font-family: 'Barlow Condensed', sans-serif; font-weight: 600; color: var(--text1); }
-        .lap-time { font-family: 'Barlow Condensed', sans-serif; color: var(--text2); }
-        .lap-pace { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; display: flex; align-items: center; gap: 4px; }
-        .lap-hr   { color: var(--text2); }
-        .lap-cad  { color: #34d399; font-family: 'Barlow Condensed', sans-serif; }
-        .lap-delta { font-size: 10px; }
+        .lap-num  { color: var(--text3); font-size: 13px; }
+        .lap-dist { font-family: 'Barlow Condensed', sans-serif; font-weight: 600; color: var(--text1); font-size: 15px; }
+        .lap-time { font-family: 'Barlow Condensed', sans-serif; color: var(--text2); font-size: 15px; }
+        .lap-pace { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 4px; }
+        .lap-hr   { color: var(--text2); font-size: 14px; }
+        .lap-cad  { color: #34d399; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; }
+        .lap-delta { font-size: 12px; }
         .lap-slow  { color: #f97316; }
 
         /* Workout row actions (imported only) */
@@ -5151,54 +4500,95 @@ function App() {
         .ci-title { font-size: 10px; font-weight: 600; color: var(--text1); }
         .ci-body { font-size: 13px; color: var(--text2); line-height: 1.6; margin: 0; }
         
-        /* ATHLETE PROFILE */
-        .athlete-profile-card {
-          display: flex;
-          align-items: center;
-          gap: 20px;
+        /* ── ATHLETE PROFILE VIEW ──────────────────────────────────── */
+        .apv-header {
+          display: flex; align-items: center; gap: 12px;
+          padding: 14px 16px !important;
         }
-        .athlete-avatar {
-          width: 64px;
-          height: 64px;
-          border-radius: 50%;
-          background: var(--lime);
-          color: #0c0c0e;
+        .apv-avatar {
+          width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+          background: rgba(232,255,71,.1); border: 2px solid rgba(232,255,71,.3);
+          display: flex; align-items: center; justify-content: center;
+          font-family: 'Barlow Condensed', sans-serif; font-size: 18px;
+          font-weight: 800; color: var(--accent);
+        }
+        .apv-info { flex: 1; min-width: 0; }
+        .apv-name { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--text1); }
+        .apv-goal { font-size: 12px; color: var(--text3); margin-top: 2px; display: flex; align-items: center; }
+        .apv-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+        .apv-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+
+        /* Edit form */
+        .apv-edit-form { display: flex; flex-direction: column; gap: 16px; }
+        .apv-edit-group { display: flex; flex-direction: column; gap: 8px; }
+        .apv-edit-group-title {
+          font-size: 11px; font-weight: 700; text-transform: uppercase;
+          letter-spacing: 1px; color: var(--text3); padding-bottom: 6px;
+          border-bottom: 1px solid var(--card-border);
+        }
+        .apv-edit-fields { display: flex; flex-direction: column; gap: 10px; }
+        .apv-edit-row { display: flex; align-items: center; gap: 8px; }
+        .apv-edit-label { font-size: 13px; color: var(--text2); flex: 1; }
+        .apv-edit-input-wrap { display: flex; align-items: center; gap: 6px; }
+
+        /* HR grid — 2×2 */
+        .apv-hr-grid {
+          display: grid; grid-template-columns: 1fr 1fr;
+          gap: 10px; margin-top: 10px;
+        }
+        .apv-hr-chip {
+          background: var(--bg3); border: 1px solid var(--card-border);
+          border-radius: 10px; padding: 12px 14px;
+          display: flex; flex-direction: column; gap: 3px;
+        }
+        .apv-hr-val {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: 18px;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
+          font-size: 26px; font-weight: 700; color: var(--text1); line-height: 1;
         }
+        .apv-hr-unit { font-size: 13px; color: var(--text3); margin-left: 3px; font-weight: 400; }
+        .apv-hr-label { font-size: 12px; color: var(--text3); letter-spacing: 0.3px; }
+
+        /* Zone edit actions */
+        .apv-zone-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .apv-secondary-btn {
+          width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;
+          border: 1px solid var(--card-border); background: transparent;
+          color: var(--text3); font-size: 13px; font-family: 'Inter', sans-serif;
+          cursor: pointer; transition: border-color .15s, color .15s; text-align: center;
+        }
+        .apv-secondary-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Keep old classes for any remaining references */
+        .athlete-profile-card { display: flex; align-items: center; gap: 20px; }
+        .athlete-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--lime); color: #0c0c0e; font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .athlete-info h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; }
-        .athlete-goal { font-size: 10px; color: var(--lime); margin-top: 4px; }
-        .athlete-meta { font-size: 10px; color: var(--text3); margin-top: 4px; }
+        .athlete-goal { font-size: 12px; color: var(--lime); margin-top: 4px; }
+        .athlete-meta { font-size: 11px; color: var(--text3); margin-top: 4px; }
         
         .phys-list { display: flex; flex-direction: column; gap: 0; margin-top: 8px; }
         .phys-row {
           display: flex; align-items: center;
           justify-content: space-between; gap: 8px;
-          padding: 9px 0;
+          padding: 12px 0;
           border-bottom: 1px solid var(--card-border);
-          font-size: 10px;
+          font-size: 14px;
         }
         .phys-key { color: var(--text3); flex-shrink: 0; }
-        .phys-val { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; color: var(--text); flex: 1; text-align: right; }
+        .phys-val { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; color: var(--text); flex: 1; text-align: right; }
         
         .zone-table { display: flex; flex-direction: column; gap: 0; margin-top: 8px; }
         .zone-row {
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 9px 0;
+          padding: 11px 0;
           border-bottom: 1px solid var(--card-border);
-          font-size: 10px;
+          font-size: 14px;
         }
-        .zone-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .zone-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
         .zone-name { flex: 1; color: var(--text2); font-weight: 500; }
-        .zone-range { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; color: var(--text); }
-        .zone-pct { font-size: 11px; color: var(--text3); width: 80px; text-align: right; }
+        .zone-range { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; color: var(--text); }
+        .zone-pct { font-size: 14px; color: var(--text3); width: 80px; text-align: right; }
         
         /* RECOVERY FULL */
         .recovery-full {
@@ -5211,9 +4601,9 @@ function App() {
         .recovery-readiness-label {
           display: flex; flex-direction: column; align-items: center; gap: 2px;
         }
-        .recovery-readiness-label .ra-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); }
-        .recovery-readiness-value { font-size: 18px; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; }
-        .recovery-suggestion { font-size: 12px; color: var(--text3); text-align: center; max-width: 160px; line-height: 1.4; }
+        .recovery-readiness-label .ra-label { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); }
+        .recovery-readiness-value { font-size: 22px; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; }
+        .recovery-suggestion { font-size: 14px; color: var(--text3); text-align: center; max-width: 160px; line-height: 1.4; }
         .recovery-divider { width: 1px; background: var(--card-border); margin: 0 28px; flex-shrink: 0; }
         .recovery-right { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 4px 0; }
         .recovery-analysis { flex: 1; }
@@ -5221,7 +4611,7 @@ function App() {
         .ra-label { color: var(--text3); }
         .ra-suggestion { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
         .ra-risks { margin: 8px 0 0; display: flex; flex-direction: column; gap: 5px; }
-        .ra-rlabel { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 6px; }
+        .ra-rlabel { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 6px; }
         .risk-item { font-size: 12px; color: var(--orange); margin: 4px 0; }
         .coach-block {
           font-size: 10px;
@@ -5617,9 +5007,6 @@ function App() {
         .phone-frame-root .recovery-full { flex-direction: column; gap: 16px; }
         .phone-frame-root .recovery-divider { display: none; }
         .phone-frame-root .strain-explainer-grid { grid-template-columns: 1fr !important; }
-        .phone-frame-root .chart-card { padding-left: 0 !important; padding-right: 0 !important; }
-        .phone-frame-root .chart-card h3,
-        .phone-frame-root .chart-card .card-sub { padding-left: 14px; padding-right: 14px; }
         .phone-frame-root .modal-box { border-radius: 20px 20px 0 0 !important; max-width: 100% !important; }
         .phone-frame-root .pred-cards { grid-template-columns: 1fr 1fr !important; }
         .phone-frame-root .row-2-inline { grid-template-columns: 1fr 1fr; }
@@ -5667,8 +5054,8 @@ function App() {
           .recharts-responsive-container { min-height: 0 !important; }
 
           /* Lap table — compress */
-          .lap-table { font-size: 11px; }
-          .lap-header, .lap-row { grid-template-columns: 28px 70px 60px 70px 60px !important; }
+          .lap-table { font-size: 14px; }
+          .lap-header, .lap-row { grid-template-columns: 32px 80px 68px 80px 60px !important; padding: 10px 6px !important; }
 
           /* Edit panels */
           .wep-grid { grid-template-columns: 1fr !important; }
@@ -5807,11 +5194,11 @@ function App() {
           display: flex; align-items: center; gap: 10px;
           padding: 6px 0; border-top: 1px solid var(--card-border);
         }
-        .zone-edit-label { flex: 1; font-size: 13px; color: var(--text2); font-weight: 500; }
+        .zone-edit-label { flex: 1; font-size: 15px; color: var(--text2); font-weight: 500; }
         .zone-edit-input-wrap { display: flex; align-items: center; gap: 6px; }
         .zone-edit-input { width: 72px !important; text-align: right; }
-        .zone-edit-pct { font-size: 11px; color: var(--text3); width: 36px; text-align: right; }
-        .zone-edit-auto { font-size: 12px; color: var(--text3); font-style: italic; }
+        .zone-edit-pct { font-size: 13px; color: var(--text3); width: 36px; text-align: right; }
+        .zone-edit-auto { font-size: 14px; color: var(--text3); font-style: italic; }
         .zone-edit-z5 { opacity: 0.6; }
 
         /* Preferences */
@@ -5945,13 +5332,6 @@ function App() {
               </div>
             ))}
             <div
-              className={`nav-item ${view === "shoes" ? "active" : ""}`}
-              onClick={() => { setView("shoes"); setSelectedWorkout(null); }}
-            >
-              <span className="nav-icon">⚙</span>
-              <span>Gear</span>
-            </div>
-            <div
               className={`nav-item ${view === "athlete" ? "active" : ""}`}
               onClick={() => { setView("athlete"); setSelectedWorkout(null); }}
             >
@@ -6014,8 +5394,7 @@ function App() {
             {view === "workout-detail" && selectedWorkout && (
               <WorkoutDetailView workout={selectedWorkout} onBack={handleBackFromWorkout} customZones={customZones} units={units} athlete={athlete} resolvedMetrics={resolvedAthleteMetrics} theme={theme} onUpdateWorkout={handleUpdateWorkout} onDeleteWorkout={handleDeleteWorkout} shoes={shoes} />
             )}
-            {view === "athlete" && <AthleteView athlete={athlete} setAthlete={handleSetAthlete} customZones={customZones} setCustomZones={setCustomZones} units={units} setUnits={setUnits} uploadedWorkouts={uploadedWorkouts} />}
-            {view === "shoes" && <GearView shoes={shoes} setShoes={setShoes} uploadedWorkouts={uploadedWorkouts} units={units} defaultShoeId={defaultShoeId} setDefaultShoeId={setDefaultShoeId} />}
+            {view === "athlete" && <AthleteView athlete={athlete} setAthlete={handleSetAthlete} customZones={customZones} setCustomZones={setCustomZones} units={units} setUnits={setUnits} uploadedWorkouts={uploadedWorkouts} shoes={shoes} setShoes={setShoes} defaultShoeId={defaultShoeId} setDefaultShoeId={setDefaultShoeId} />}
 
           </main>
         </div>
@@ -6130,3 +5509,616 @@ export default function PhoneFrame() {
     </div>
   );
 }
+const AthleteView = ({ athlete, setAthlete, customZones, setCustomZones, units, setUnits, uploadedWorkouts = [], shoes, setShoes, defaultShoeId, setDefaultShoeId }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({ ...athlete });
+  const [saved, setSaved] = useState(false);
+  const [editingZones, setEditingZones] = useState(false);
+  const [zoneDraft, setZoneDraft] = useState([...customZones]);
+  const [zonesSaved, setZonesSaved] = useState(false);
+
+  // Keep zoneDraft in sync when customZones change externally (e.g. maxHR update)
+  const prevZones = useRef(customZones);
+  useEffect(() => {
+    if (prevZones.current !== customZones) {
+      prevZones.current = customZones;
+      setZoneDraft([...customZones]);
+    }
+  }, [customZones]);
+
+  const initials = draft.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+
+  const handleChange = (key, value) => setDraft(prev => ({ ...prev, [key]: value }));
+
+  const handleSave = () => {
+    const parsed = { ...draft };
+    ["age","weight","height","maxHR","restingHR","lthr","hrv","ftp"].forEach(k => {
+      parsed[k] = parseInt(parsed[k]) || 0;
+    });
+    parsed.vo2max = parseFloat(parsed.vo2max) || 0;
+    setAthlete(parsed);
+    setEditing(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleCancel = () => { setDraft({ ...athlete }); setEditing(false); };
+
+  const handleZoneSave = () => {
+    // Validate: each bound must be > previous, all must be < maxHR
+    const vals = zoneDraft.map(v => parseInt(v) || 0);
+    for (let i = 1; i < vals.length; i++) {
+      if (vals[i] <= vals[i-1]) {
+        alert(`Zone ${i+1} upper limit must be greater than Zone ${i} (${vals[i-1]} bpm).`);
+        return;
+      }
+    }
+    if (vals[vals.length-1] >= a.maxHR) {
+      alert(`Zone 4 upper limit must be below your Max HR (${a.maxHR} bpm).`);
+      return;
+    }
+    setCustomZones(vals);
+    setEditingZones(false);
+    setZonesSaved(true);
+    setTimeout(() => setZonesSaved(false), 2500);
+  };
+
+  const handleZoneCancel = () => { setZoneDraft([...customZones]); setEditingZones(false); };
+
+  const handleResetZones = () => {
+    const maxHR     = parseInt(a.maxHR)     || athlete.maxHR;
+    const restingHR = parseInt(a.restingHR) || athlete.restingHR;
+    const hrr       = Math.max(maxHR - restingHR, 1);
+    setZoneDraft([0.60, 0.70, 0.80, 0.90].map(p => Math.round(restingHR + hrr * p)));
+  };
+
+  const a = editing ? draft : athlete;
+
+  // ── AI-estimated performance metrics ────────────────────────────────────
+  // Run whenever the displayed athlete values change (editing or saved)
+  const estimatedMetrics = useMemo(() => {
+    const maxHR     = parseInt(a.maxHR)     || 190;
+    const restingHR = parseInt(a.restingHR) || 50;
+    const age       = parseInt(a.age)       || 30;
+    const weightKg  = ((parseInt(a.weight) || 154) * 0.453592);
+    const hrr       = Math.max(maxHR - restingHR, 1);
+
+    // LTHR — Friel formula: ~85-90% of max HR for trained runners
+    // More precise: LTHR ≈ restingHR + HRR * 0.85 (Karvonen at 85%)
+    const estimatedLTHR = Math.round(restingHR + hrr * 0.85);
+
+    // VO2max — multiple formula approaches:
+    // 1. Uth-Sørensen-Overgaard-Pedersen: VO2max ≈ 15 × (HRmax / HRrest)
+    const vo2maxUth = parseFloat((15 * (maxHR / restingHR)).toFixed(1));
+    // 2. Age-based normative (Jackson et al): gender-adjusted
+    const genderAdj = a.gender === "Female" ? -7.9 : 0;
+    const vo2maxAge = parseFloat((52 - 0.185 * age + genderAdj).toFixed(1));
+    // Blend both HR/age methods
+    const estimatedVO2max = parseFloat(((vo2maxUth * 0.6 + vo2maxAge * 0.4)).toFixed(1));
+
+    // FTP — estimated from LTHR via empirical relationship for runners with power meters
+    // Running FTP (watts) ≈ body weight (kg) × pace-based multiplier
+    // Using HR-based proxy: FTP ≈ weight_kg × 3.5 × (LTHR/maxHR)
+    const estimatedFTP = Math.round(weightKg * 3.5 * (estimatedLTHR / maxHR));
+
+    return {
+      lthr:   { value: estimatedLTHR,  formula: `Karvonen 85% HRR (${restingHR} + ${hrr}×0.85)` },
+      vo2max: { value: estimatedVO2max, formula: `Uth-Sørensen (15×${maxHR}/${restingHR}) + age norms blend` },
+      ftp:    { value: estimatedFTP,    formula: `HR-weight proxy (${weightKg.toFixed(0)} kg × 3.5 × LTHR ratio)` },
+    };
+  }, [a.maxHR, a.restingHR, a.age, a.weight, a.gender]);
+
+  // Performance-based VO2max from uploaded workouts (Jack Daniels VDOT)
+  const perfVO2max = useMemo(() => calcVO2maxFromWorkouts(uploadedWorkouts), [uploadedWorkouts]);
+
+  // Helper: returns actual value if entered, otherwise performance-based, otherwise estimated
+  const resolvedLTHR   = (parseInt(a.lthr)    || 0) > 0 ? { value: parseInt(a.lthr),       estimated: false }
+                       : { ...estimatedMetrics.lthr,   estimated: true };
+  const resolvedVO2max = (parseFloat(a.vo2max) || 0) > 0 ? { value: parseFloat(a.vo2max),  estimated: false, source: "manual" }
+                       : perfVO2max                       ? { value: perfVO2max.value,       estimated: true,  source: "performance", run: perfVO2max.run }
+                       : { ...estimatedMetrics.vo2max,     estimated: true,  source: "hr" };
+  const resolvedFTP    = (parseInt(a.ftp)      || 0) > 0 ? { value: parseInt(a.ftp),        estimated: false }
+                       : { ...estimatedMetrics.ftp,    estimated: true };
+
+  // While editing, preview zone boundaries live from draft values (if zones are still at defaults)
+  const previewBounds = (() => {
+    if (!editing) return customZones;
+    const draftMaxHR     = parseInt(draft.maxHR)     || athlete.maxHR;
+    const draftRestingHR = parseInt(draft.restingHR) || athlete.restingHR;
+    const karvonenBounds = (mhr, rhr) => {
+      const hrr = Math.max(mhr - rhr, 1);
+      return [0.60, 0.70, 0.80, 0.90].map(p => Math.round(rhr + hrr * p));
+    };
+    const oldDefaults = karvonenBounds(athlete.maxHR, athlete.restingHR);
+    const isDefault = customZones.every((v, i) => v === oldDefaults[i]);
+    if (isDefault) return karvonenBounds(draftMaxHR, draftRestingHR);
+    return customZones;
+  })();
+
+  // Build live zone display from previewBounds (live during edit, saved otherwise)
+  const zoneDisplay = [
+    { name: "Z1 Recovery",  range: `< ${previewBounds[0]} bpm`,                                    color: HR_ZONE_COLORS[0] },
+    { name: "Z2 Aerobic",   range: `${previewBounds[0]}–${previewBounds[1]} bpm`,                  color: HR_ZONE_COLORS[1] },
+    { name: "Z3 Tempo",     range: `${previewBounds[1]}–${previewBounds[2]} bpm`,                  color: HR_ZONE_COLORS[2] },
+    { name: "Z4 Threshold", range: `${previewBounds[2]}–${previewBounds[3]} bpm`,                  color: HR_ZONE_COLORS[3] },
+    { name: "Z5 VO2max+",   range: `> ${previewBounds[3]} bpm`,                                    color: HR_ZONE_COLORS[4] },
+  ];
+
+  const ZONE_LABELS = ["Z1 Recovery", "Z2 Aerobic", "Z3 Tempo", "Z4 Threshold"];
+
+  return (
+    <div className="view-grid">
+
+      {/* ── Header: avatar + name + edit button ── */}
+      <div className="card apv-header">
+        <div className="apv-avatar">{initials}</div>
+        <div className="apv-info">
+          <div className="apv-name">{athlete.name}</div>
+          <div className="apv-goal"><Icon name="target" size={11} style={{marginRight:4}} />{athlete.goal}</div>
+          <div className="apv-meta">{athlete.age}y · {athlete.weight} lbs · {fmtHeight(athlete.height)} · {athlete.gender}</div>
+        </div>
+        <div className="apv-actions">
+          {saved && <span className="save-confirm">✓ Saved</span>}
+          {!editing
+            ? <button className="edit-btn" onClick={() => { setDraft({ ...athlete }); setEditing(true); }}>✎ Edit</button>
+            : <>
+                <button className="cancel-btn" onClick={handleCancel}>Cancel</button>
+                <button className="save-btn" onClick={handleSave}>Save</button>
+              </>
+          }
+        </div>
+      </div>
+
+      {/* ── Edit form — only when editing ── */}
+      {editing && (
+        <div className="card full-width apv-edit-form">
+          {FIELD_GROUPS.map(group => (
+            <div key={group.title} className="apv-edit-group">
+              <div className="apv-edit-group-title">{group.title}</div>
+              <div className="apv-edit-fields">
+                {group.fields.map(f => (
+                  <div key={f.key} className="apv-edit-row">
+                    <label className="apv-edit-label">{f.label}</label>
+                    <div className="apv-edit-input-wrap">
+                      {f.type === "select"
+                        ? <select className="ef-select" value={draft[f.key]} onChange={e => handleChange(f.key, e.target.value)}>
+                            {f.options.map(o => <option key={o}>{o}</option>)}
+                          </select>
+                        : <input className="ef-input" type={f.type} step={f.step || "1"} value={draft[f.key]} onChange={e => handleChange(f.key, e.target.value)} />
+                      }
+                      {f.unit && <span className="ef-unit">{f.unit}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Heart Rate: 2x2 chips + zones ── */}
+      <div className="card full-width">
+        <h3>Heart Rate</h3>
+        <div className="apv-hr-grid">
+          {[
+            { label: "Max HR",     value: `${a.maxHR}`,            unit: "bpm", estimated: false },
+            { label: "Resting HR", value: `${a.restingHR}`,        unit: "bpm", estimated: false },
+            { label: "LTHR",       value: `${resolvedLTHR.value}`, unit: "bpm", estimated: resolvedLTHR.estimated },
+            { label: "HRV",        value: `${a.hrv}`,              unit: "ms",  estimated: false },
+          ].map(({ label, value, unit, estimated }) => (
+            <div key={label} className="apv-hr-chip">
+              <div className="apv-hr-val">{value}<span className="apv-hr-unit">{unit}</span></div>
+              <div className="apv-hr-label">{label}{estimated && <span className="est-dot" title="AI estimated">●</span>}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <HRZoneBar zones={[20, 20, 20, 20, 20]} />
+          <div className="zone-legend">
+            {zoneDisplay.map(z => (
+              <div key={z.name} className="zl-item">
+                <span className="zl-dot" style={{ background: z.color }} />
+                <span className="zl-name">{z.name}</span>
+                <span className="zl-pct">{z.range}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          {!editingZones
+            ? <button className="apv-secondary-btn" onClick={() => { setZoneDraft([...previewBounds]); setEditingZones(true); }}>
+                ✎ Edit Zone Boundaries
+              </button>
+            : <div className="zone-edit-table">
+                <p className="card-sub" style={{ marginBottom: 10 }}>Edit upper BPM boundary for each zone.</p>
+                {ZONE_LABELS.map((label, i) => (
+                  <div key={label} className="zone-edit-row">
+                    <span className="zone-dot" style={{ background: HR_ZONE_COLORS[i] }} />
+                    <span className="zone-edit-label">{label}</span>
+                    <div className="zone-edit-input-wrap">
+                      <input className="ef-input zone-edit-input" type="number"
+                        min={i === 0 ? 60 : (parseInt(zoneDraft[i-1]) || 0) + 1}
+                        max={a.maxHR - 1} value={zoneDraft[i]}
+                        onChange={e => { const n = [...zoneDraft]; n[i] = e.target.value; setZoneDraft(n); }}
+                      />
+                      <span className="ef-unit">bpm</span>
+                    </div>
+                  </div>
+                ))}
+                <div className="zone-edit-row zone-edit-z5">
+                  <span className="zone-dot" style={{ background: HR_ZONE_COLORS[4] }} />
+                  <span className="zone-edit-label">Z5 VO2max+</span>
+                  <span className="zone-edit-auto">&gt; {zoneDraft[3] || customZones[3]} bpm (auto)</span>
+                </div>
+                <div className="apv-zone-actions">
+                  <button className="edit-btn" onClick={handleResetZones}>↺ Reset</button>
+                  <button className="cancel-btn" onClick={handleZoneCancel}>Cancel</button>
+                  <button className="save-btn" onClick={handleZoneSave}>✓ Save</button>
+                  {zonesSaved && <span className="save-confirm">✓ Saved</span>}
+                </div>
+              </div>
+          }
+        </div>
+      </div>
+
+      {/* ── Performance + Units side by side ── */}
+      <div className="row-2-inline" style={{ gap: 12, marginBottom: 0 }}>
+        <div className="card">
+          <h3>Performance</h3>
+          <div className="phys-list">
+            <div className="phys-row">
+              <span className="phys-key">FTP</span>
+              <span className="phys-val">{resolvedFTP.value}W{resolvedFTP.estimated && <span className="est-badge" style={{marginLeft:6}}>est.</span>}</span>
+            </div>
+            <div className="phys-row">
+              <span className="phys-key">VO2max</span>
+              <span className="phys-val">{resolvedVO2max.value}{resolvedVO2max.estimated && <span className="est-badge" style={{marginLeft:6}}>est.</span>}</span>
+            </div>
+          </div>
+        </div>
+        <div className="card">
+          <h3>Units</h3>
+          <div className="prefs-list">
+            <div className="pref-row">
+              <span className="pref-label">Distance</span>
+              <div className="pref-toggle">
+                {["km","mi"].map(opt => (
+                  <button key={opt} className={`pref-btn ${units.distance === opt ? "active" : ""}`}
+                    onClick={() => setUnits(u => ({ ...u, distance: opt }))}>{opt}</button>
+                ))}
+              </div>
+            </div>
+            <div className="pref-row">
+              <span className="pref-label">Altitude</span>
+              <div className="pref-toggle">
+                {["ft","m"].map(opt => (
+                  <button key={opt} className={`pref-btn ${units.altitude === opt ? "active" : ""}`}
+                    onClick={() => setUnits(u => ({ ...u, altitude: opt }))}>{opt}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Power zones ── */}
+      <div className="card full-width">
+        <h3>Power Zones
+          {resolvedFTP.estimated && <span className="est-badge" style={{ marginLeft: 8, verticalAlign: "middle" }}>AI est.</span>}
+          <span style={{ fontSize: 13, fontWeight: 400, color: "var(--text3)", marginLeft: 8 }}>FTP: {resolvedFTP.value}W</span>
+        </h3>
+        <div className="zone-table" style={{ marginTop: 8 }}>
+          {[
+            { name: "Z1 Active Rec", pct: "<55%",     watts: `<${Math.round(resolvedFTP.value * 0.55)}W` },
+            { name: "Z2 Endurance",  pct: "55–75%",   watts: `${Math.round(resolvedFTP.value * 0.55)}–${Math.round(resolvedFTP.value * 0.75)}W` },
+            { name: "Z3 Tempo",      pct: "75–90%",   watts: `${Math.round(resolvedFTP.value * 0.75)}–${Math.round(resolvedFTP.value * 0.90)}W` },
+            { name: "Z4 Threshold",  pct: "90–105%",  watts: `${Math.round(resolvedFTP.value * 0.90)}–${Math.round(resolvedFTP.value * 1.05)}W` },
+            { name: "Z5 VO2max",     pct: "105–120%", watts: `${Math.round(resolvedFTP.value * 1.05)}–${Math.round(resolvedFTP.value * 1.20)}W` },
+            { name: "Z6 Anaerobic",  pct: ">120%",    watts: `>${Math.round(resolvedFTP.value * 1.20)}W` },
+          ].map((z, i) => (
+            <div key={z.name} className="zone-row">
+              <span className="zone-dot" style={{ background: HR_ZONE_COLORS[Math.min(i, 4)] }} />
+              <span className="zone-name">{z.name}</span>
+              <span className="zone-range">{z.watts}</span>
+              <span className="zone-pct">{z.pct}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Gear / Shoes ── */}
+      <GearView shoes={shoes} setShoes={setShoes} uploadedWorkouts={uploadedWorkouts}
+        units={units} defaultShoeId={defaultShoeId} setDefaultShoeId={setDefaultShoeId} />
+
+    </div>
+  );
+};
+const WORKOUT_TYPE_COLOR = {
+  Run: "var(--accent)",
+  Ride: "#38bdf8",
+  Swim: "#a78bfa",
+  Strength: "#f97316",
+};
+
+// Build a richer set of mock workouts spread across the past 2 months
+const TrendsView = ({ onSelectWorkout, uploadedWorkouts = [], units, athlete, resolvedAthleteMetrics }) => {
+
+  const hasData = uploadedWorkouts.length > 0;
+
+  // Pace trend — one point per workout sorted by date
+  const paceTrend = [...uploadedWorkouts]
+    .filter(w => w.avgPace)
+    .sort((a,b) => new Date(a.date) - new Date(b.date))
+    .map(w => ({
+      date: new Date(w.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      pace: units.distance === "mi" ? w.avgPace : Math.round(w.avgPace * 0.621371),
+      hr: w.avgHR,
+      name: w.name,
+    }));
+
+  // HR trend
+  const hrTrend = paceTrend.filter(p => p.hr);
+
+  // Weekly volume
+  const weeklyMap = {};
+  uploadedWorkouts.forEach(w => {
+    const d = new Date(w.date + "T12:00:00");
+    const ws = new Date(d); ws.setDate(d.getDate() - d.getDay());
+    const key = ws.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (!weeklyMap[key]) weeklyMap[key] = { week: key, dist: 0, tss: 0 };
+    const dist = units.distance === "mi" ? (w.distance || 0) * 0.621371 : (w.distance || 0);
+    weeklyMap[key].dist = parseFloat((weeklyMap[key].dist + dist).toFixed(1));
+    weeklyMap[key].tss += (w.tss || 0);
+  });
+  const weeklyLoad = Object.values(weeklyMap).sort((a,b) => new Date(a.week) - new Date(b.week)).slice(-12);
+  const distUnit = units.distance === "mi" ? "mi" : "km";
+
+  const today = new Date(); // real current date
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [selectedDay, setSelectedDay] = useState(null);
+
+  const prevMonth = () => {
+    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
+    else setCurrentMonth(m => m - 1);
+    setSelectedDay(null);
+  };
+  const nextMonth = () => {
+    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1); }
+    else setCurrentMonth(m => m + 1);
+    setSelectedDay(null);
+  };
+
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const monthName = new Date(currentYear, currentMonth).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  // Map workouts to date strings
+  const workoutsByDate = {};
+  uploadedWorkouts.forEach(w => {
+    if (!workoutsByDate[w.date]) workoutsByDate[w.date] = [];
+    workoutsByDate[w.date].push(w);
+  });
+
+  const dateKey = (d) => {
+    const mm = String(currentMonth + 1).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    return `${currentYear}-${mm}-${dd}`;
+  };
+
+  // Weekly totals — group by ISO week within the current month view
+  const getWeeklyStats = () => {
+    const weeks = [];
+    let weekStart = 1 - firstDay; // day index of first cell
+    for (let w = 0; w < 6; w++) {
+      let kmTotal = 0, count = 0;
+      for (let d = 0; d < 7; d++) {
+        const day = weekStart + d;
+        if (day >= 1 && day <= daysInMonth) {
+          const ws = workoutsByDate[dateKey(day)] || [];
+          ws.forEach(wo => { kmTotal += wo.distance || 0; count += 1; });
+        }
+      }
+      if (weekStart <= daysInMonth && weekStart + 6 >= 1) {
+        weeks.push({ kmTotal: parseFloat(kmTotal.toFixed(1)), count });
+      }
+      weekStart += 7;
+    }
+    return weeks;
+  };
+  const weeklyStats = getWeeklyStats();
+
+  const selectedWorkouts = selectedDay ? (workoutsByDate[selectedDay] || []) : [];
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const isToday = (d) => {
+    return d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+  };
+
+  const monthTotalKm = Object.entries(workoutsByDate)
+    .filter(([date]) => date.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`))
+    .reduce((sum, [, ws]) => sum + ws.reduce((s, w) => s + (w.distance || 0), 0), 0)
+    .toFixed(1);
+
+  const monthWorkoutCount = Object.entries(workoutsByDate)
+    .filter(([date]) => date.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`))
+    .reduce((sum, [, ws]) => sum + ws.length, 0);
+
+  const monthTSS = Object.entries(workoutsByDate)
+    .filter(([date]) => date.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`))
+    .reduce((sum, [, ws]) => sum + ws.reduce((s, w) => s + (w.tss || 0), 0), 0);
+
+  return (
+    <div className="view-grid">
+      {/* Month summary stats */}
+      <div className="row-3-nowrap">
+        <InfoStatCard label="Month Distance" value={fmtDist(parseFloat(monthTotalKm), units)} accent="var(--accent)"
+          info={{ title: "Month Distance", body: `Total distance logged across all sessions in ${monthName}.`, footer: "Tap any day on the calendar to see individual workouts." }} />
+        <InfoStatCard label="Sessions" value={monthWorkoutCount} sub="this month" accent="#38bdf8"
+          info={{ title: "Sessions This Month", body: `Number of logged workouts in ${monthName}. Includes all activity types.` }} />
+        <InfoStatCard label="Month TSS" value={monthTSS} sub="training stress" accent="#a78bfa"
+          info={{ title: "Month TSS", body: "Total Training Stress Score for the month. Reflects combined volume and intensity of all sessions.", rows: [{ key: "Low month", val: "< 500 TSS" }, { key: "Moderate", val: "500–1000 TSS" }, { key: "High", val: "> 1000 TSS" }], footer: "Compare month-to-month to track loading trends." }} />
+      </div>
+
+      {/* Calendar card */}
+      <div className="card full-width cal-card">
+        {/* Header */}
+        <div className="cal-header">
+          <button className="cal-nav-btn" onClick={prevMonth}>‹</button>
+          <h3 style={{ marginBottom: 0 }}>{monthName}</h3>
+          <button className="cal-nav-btn" onClick={nextMonth}>›</button>
+        </div>
+
+        {/* Day-of-week labels + week totals column */}
+        <div className="cal-grid-wrap">
+          <div className="cal-grid">
+            {/* Day headers */}
+            {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
+              <div key={d} className="cal-dow">{d}</div>
+            ))}
+
+            {/* Day cells */}
+            {cells.map((day, i) => {
+              if (!day) return <div key={`empty-${i}`} className="cal-cell empty" />;
+              const dk = dateKey(day);
+              const dayWorkouts = workoutsByDate[dk] || [];
+              const isSelected = selectedDay === dk;
+              const isTod = isToday(day);
+              const dayKm = dayWorkouts.reduce((s, w) => s + (w.distance || 0), 0);
+
+              return (
+                <div
+                  key={dk}
+                  className={`cal-cell ${dayWorkouts.length ? "has-workout" : ""} ${isSelected ? "selected" : ""} ${isTod ? "today" : ""}`}
+                  onClick={() => setSelectedDay(isSelected ? null : dk)}
+                >
+                  <div className="cal-day-num">{day}</div>
+                  {dayWorkouts.length > 0 && (
+                    <div className="cal-dots">
+                      {dayWorkouts.map((w, wi) => (
+                        <span key={wi} className="cal-dot" style={{ background: WORKOUT_TYPE_COLOR[w.type] || "#64748b" }} />
+                      ))}
+                    </div>
+                  )}
+                  {dayKm > 0 && (
+                    <div className="cal-day-km">{units.distance === "mi" ? (dayKm * 0.621371).toFixed(1) : dayKm.toFixed(1)}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Weekly totals sidebar */}
+          <div className="cal-week-totals">
+            <div className="cwt-header">Week</div>
+            {weeklyStats.map((w, i) => {
+              const dispKm = units.distance === "mi" ? (w.kmTotal * 0.621371).toFixed(1) : w.kmTotal;
+              const dispUnit = units.distance === "mi" ? "mi" : "km";
+              return (
+                <div key={i} className="cwt-row">
+                  <div className="cwt-km">{w.kmTotal > 0 ? dispKm : "—"}</div>
+                  <div className="cwt-unit">{w.kmTotal > 0 ? dispUnit : ""}</div>
+                  {w.count > 0 && <div className="cwt-sessions">{w.count} {w.count === 1 ? "session" : "sessions"}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Selected day workout detail */}
+      {selectedDay && (
+        <div className="card full-width">
+          <h3>{new Date(selectedDay + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</h3>
+          {selectedWorkouts.length === 0 ? (
+            <p className="card-sub" style={{ marginTop: 12 }}>Rest day — no workouts logged.</p>
+          ) : (
+            <div className="cal-workout-list">
+              {selectedWorkouts.map(w => (
+                <div key={w.id} className="cal-workout-item" onClick={() => w.stream && onSelectWorkout(w)}>
+                  <div className="cwi-type-dot" style={{ background: WORKOUT_TYPE_COLOR[w.type] || "#64748b" }} />
+                  <div className="cwi-info">
+                    <div className="cwi-name">{w.name}</div>
+                    <div className="cwi-meta">
+                      {w.distance > 0 && <span>{fmtDist(w.distance, units)}</span>}
+                      <span>{fmtDuration(w.duration)}</span>
+                      {w.avgHR && <span>{w.avgHR} bpm avg</span>}
+                      <span>TSS {w.tss}</span>
+                    </div>
+                  </div>
+                  {w.stream && <div className="cwi-arrow">›</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="row-2-inline" style={{ gap: 16 }}>
+        <InfoStatCard label="Current HRV" value={athlete.hrv} sub="ms" accent="#38bdf8"
+          info={{ title: "Heart Rate Variability", body: "Millisecond variation between heartbeats. Higher HRV = better autonomic recovery and readiness.", rows: [{ key: "< 50 ms", val: "Low" }, { key: "50–80 ms", val: "Average" }, { key: "> 80 ms", val: "High" }], footer: "HRV naturally varies — track your personal trend, not a fixed target." }} />
+        <InfoStatCard label="Resting HR" value={athlete.restingHR} sub="bpm" accent="var(--accent)"
+          info={{ title: "Resting Heart Rate", body: "Heart rate measured at complete rest. Lower RHR generally indicates better cardiovascular fitness.", rows: [{ key: "Elite", val: "< 40 bpm" }, { key: "Trained", val: "40–55 bpm" }, { key: "Average", val: "55–70 bpm" }], footer: "A sudden rise in RHR (3–5 bpm above baseline) can signal fatigue or illness." }} />
+      </div>
+
+      {paceTrend.length > 1 && (
+        <div className="card full-width chart-card">
+          <h3>Pace Trend</h3>
+          <p className="card-sub">Average pace per session ({units.distance === "mi" ? "min/mi" : "min/km"})</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart margin={{ left: -16, right: 8, top: 4, bottom: 0 }} data={paceTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} />
+              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => fmtPace(v)} domain={['auto','auto']} />
+              <Tooltip content={<CustomTooltip formatter={v => fmtPace(v)} />} />
+              <Line type="monotone" dataKey="pace" stroke="#e8ff47" strokeWidth={2} name="Avg Pace" dot={{ fill: "#e8ff47", r: 3 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {hrTrend.length > 1 && (
+        <div className="card full-width chart-card">
+          <h3>Heart Rate Trend</h3>
+          <p className="card-sub">Average HR per session</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <ComposedChart margin={{ left: -16, right: 8, top: 4, bottom: 0 }} data={hrTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} />
+              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} domain={['auto','auto']} />
+              <Tooltip content={<CustomTooltip formatter={v => `${v} bpm`} />} />
+              <Line type="monotone" dataKey="hr" stroke="#f97316" strokeWidth={2} name="Avg HR" dot={{ fill: "#f97316", r: 3 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {weeklyLoad.length > 0 && (
+        <div className="card full-width chart-card">
+          <h3>Weekly Volume</h3>
+          <p className="card-sub">Distance & training stress by week</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart margin={{ left: -16, right: 8, top: 4, bottom: 0 }} data={weeklyLoad}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis dataKey="week" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} />
+              <YAxis yAxisId="left" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} />
+              <Tooltip content={<CustomTooltip formatter={(v,n) => n === "dist" ? `${v} ${distUnit}` : v} />} />
+              <Bar yAxisId="left" dataKey="dist" fill="rgba(232,255,71,.25)" stroke="#e8ff47" strokeWidth={1} name="dist" radius={[4,4,0,0]} />
+              <Line yAxisId="right" type="monotone" dataKey="tss" stroke="#f97316" strokeWidth={2} name="TSS" dot={{ fill: "#f97316", r: 3 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* ── Race Predictions ── */}
+      <PredictionsSection athlete={athlete} uploadedWorkouts={uploadedWorkouts} units={units} resolvedAthleteMetrics={resolvedAthleteMetrics} />
+
+    </div>
+  );
+};
+
