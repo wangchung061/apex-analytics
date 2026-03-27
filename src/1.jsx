@@ -29,7 +29,6 @@ const ICONS = {
   warn:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
   ruler:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12L12 2l10 10-10 10L2 12z"/><path d="M7 12h2M12 7v2M17 12h-2M12 17v-2"/></svg>,
   sleep:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>,
-  star:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
   walk:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="4" r="1.5"/><path d="M9 9l-2 7M15 9l2 7M9 14h6M11 9l1 5 1-5"/></svg>,
   retire:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>,
   easy:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>,
@@ -481,91 +480,49 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
   const dash = circ * (readinessPct / 100);
 
 
-  // Greeting
-  const hour = new Date().getHours();
-  const timeGreeting =
-    hour < 5  ? "Good night" :
-    hour < 12 ? "Good morning" :
-    hour < 17 ? "Good afternoon" : "Good evening";
+  const QUOTES = [
+    { text: "The only bad workout is the one that didn't happen.", author: "Unknown" },
+    { text: "Champions aren't made in gyms. They're made from something deep inside them.", author: "Muhammad Ali" },
+    { text: "Run when you can, walk when you have to, crawl if you must. Just never give up.", author: "Dean Karnazes" },
+    { text: "It never gets easier. You just get stronger.", author: "Unknown" },
+    { text: "The body achieves what the mind believes.", author: "Unknown" },
+    { text: "Pain is temporary. Quitting lasts forever.", author: "Lance Armstrong" },
+    { text: "Every mile is two in winter.", author: "George Herbert" },
+    { text: "Your body can stand almost anything. It's your mind you have to convince.", author: "Unknown" },
+    { text: "The miracle isn't that I finished. The miracle is that I had the courage to start.", author: "John Bingham" },
+    { text: "Motivation gets you started. Habit keeps you going.", author: "Jim Ryun" },
+    { text: "Some seek the comfort of their therapist's office. Others head to the woods and run.", author: "Michael R. Mantell" },
+    { text: "Ask yourself: Can I give more? The answer is always yes.", author: "Beau Hightower" },
+    { text: "There will be days you don't think you can run a marathon. Those are the days you go.", author: "Unknown" },
+    { text: "No matter how slow you go, you're still lapping everyone on the couch.", author: "Unknown" },
+    { text: "Believe that you can run farther or faster. Believe that you're young enough, old enough, strong enough.", author: "Hal Higdon" },
+    { text: "You have a choice. You can throw in the towel or use it to wipe the sweat off your face.", author: "Unknown" },
+    { text: "First, master the fundamentals.", author: "Larry Bird" },
+    { text: "Do something today that your future self will thank you for.", author: "Unknown" },
+    { text: "The pain you feel today will be the strength you feel tomorrow.", author: "Unknown" },
+    { text: "Don't limit your challenges. Challenge your limits.", author: "Unknown" },
+    { text: "Gold medals aren't really made of gold. They're made of sweat, determination, and a hard-to-find alloy called guts.", author: "Dan Gable" },
+    { text: "If it doesn't challenge you, it won't change you.", author: "Fred DeVito" },
+    { text: "The difference between try and triumph is a little umph.", author: "Marvin Phillips" },
+    { text: "Success is usually just around the corner from where you stopped.", author: "Unknown" },
+    { text: "One run can change your day. Many runs can change your life.", author: "Unknown" },
+    { text: "Make each day your masterpiece.", author: "John Wooden" },
+    { text: "Hard work beats talent when talent doesn't work hard.", author: "Tim Notke" },
+    { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
+    { text: "Winning isn't everything, but wanting to win is.", author: "Vince Lombardi" },
+    { text: "The harder the battle, the sweeter the victory.", author: "Les Brown" },
+  ];
 
-  // Today's wellness from localStorage
-  const todayKey = today.toISOString().split("T")[0];
-  const loadWellness = () => { try { return JSON.parse(localStorage.getItem(`apex_wellness_${todayKey}`)) || {}; } catch { return {}; } };
-  const [wellness, setWellnessState] = useState(loadWellness);
-  const setWellness = (updates) => {
-    const next = { ...wellness, ...updates };
-    setWellnessState(next);
-    try { localStorage.setItem(`apex_wellness_${todayKey}`, JSON.stringify(next)); } catch {}
-  };
-  const sleepHrs  = parseFloat(wellness.sleep)   || 0;
-  const sleepQual = parseInt(wellness.sleepQual) || 0;
-  const wHRV      = parseFloat(wellness.hrv)     || 0;
-  const soreness  = parseInt(wellness.soreness)  || 0;
-  const energy    = parseInt(wellness.energy)    || 0;
+  const dayIndex = Math.floor(Date.now() / 86400000) % QUOTES.length;
+  const todayQuote = QUOTES[dayIndex];
 
   return (
     <div className="dash-mobile">
 
-      {/* ── Welcome ── */}
-      <div className="dash-welcome">
-        <div className="dash-welcome-greeting">{timeGreeting},</div>
-        <div className="dash-welcome-name">{athlete.name.split(" ")[0]}</div>
-      </div>
-
-      {/* ── Today's Wellness ── */}
-      <div className="card full-width">
-        <h3>Today's Wellness</h3>
-        <p className="card-sub">Log your morning stats to improve readiness accuracy</p>
-        <div className="wellness-grid">
-          <div className="wellness-item">
-            <div className="wellness-label"><Icon name="sleep" size={13} style={{marginRight:5}} />Sleep</div>
-            <div className="wellness-input-row">
-              <input className="wellness-input" type="number" min="0" max="12" step="0.5"
-                placeholder="0" value={wellness.sleep || ""}
-                onChange={e => setWellness({ sleep: e.target.value })} />
-              <span className="wellness-unit">hrs</span>
-            </div>
-          </div>
-          <div className="wellness-item">
-            <div className="wellness-label"><Icon name="star" size={13} style={{marginRight:5}} />Sleep Quality</div>
-            <div className="wellness-dots">
-              {[1,2,3,4,5].map(v => (
-                <button key={v} className={`wellness-dot ${sleepQual >= v ? "active" : ""}`}
-                  style={{ "--dot-color": sleepQual >= v ? "#38bdf8" : "var(--card-border)" }}
-                  onClick={() => setWellness({ sleepQual: sleepQual === v ? 0 : v })} />
-              ))}
-            </div>
-          </div>
-          <div className="wellness-item">
-            <div className="wellness-label"><Icon name="heart" size={13} style={{marginRight:5}} />Morning HRV</div>
-            <div className="wellness-input-row">
-              <input className="wellness-input" type="number" min="0" max="200"
-                placeholder="0" value={wellness.hrv || ""}
-                onChange={e => setWellness({ hrv: e.target.value })} />
-              <span className="wellness-unit">ms</span>
-            </div>
-          </div>
-          <div className="wellness-item">
-            <div className="wellness-label"><Icon name="warn" size={13} style={{marginRight:5}} />Soreness</div>
-            <div className="wellness-dots">
-              {[1,2,3,4,5].map(v => (
-                <button key={v} className={`wellness-dot ${soreness >= v ? "active" : ""}`}
-                  style={{ "--dot-color": soreness >= v ? "#f97316" : "var(--card-border)" }}
-                  onClick={() => setWellness({ soreness: soreness === v ? 0 : v })} />
-              ))}
-            </div>
-          </div>
-          <div className="wellness-item">
-            <div className="wellness-label"><Icon name="power" size={13} style={{marginRight:5}} />Energy</div>
-            <div className="wellness-dots">
-              {[1,2,3,4,5].map(v => (
-                <button key={v} className={`wellness-dot ${energy >= v ? "active" : ""}`}
-                  style={{ "--dot-color": energy >= v ? "var(--accent)" : "var(--card-border)" }}
-                  onClick={() => setWellness({ energy: energy === v ? 0 : v })} />
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* ── Daily quote ── */}
+      <div className="dash-quote">
+        <div className="dash-quote-text">"{todayQuote.text}"</div>
+        <div className="dash-quote-author">— {todayQuote.author}</div>
       </div>
 
       {/* ── Readiness focal card ── */}
@@ -680,6 +637,35 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
           </>
         ) : (
           <div className="dlw-empty">Import a workout to see your last activity here</div>
+        )}
+      </div>
+
+      {/* ── Fitness trend chart ── always shown, empty state if no data ── */}
+      <div className="card full-width chart-card">
+        <h3>Fitness Trend</h3>
+        <p className="card-sub">Fitness · Fatigue · Form — 90 days</p>
+        {hasData ? (
+          <ResponsiveContainer width="100%" height={180}>
+            <ComposedChart margin={{ left: -16, right: 8, top: 4, bottom: 0 }} data={fitnessData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
+              <XAxis dataKey="date" tick={{ fill: "var(--text3)", fontSize: 10 }} tickLine={false} interval={20} />
+              <YAxis tick={{ fill: "var(--text3)", fontSize: 10 }} tickLine={false} axisLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area type="monotone" dataKey="ctl" fill="rgba(232,255,71,.08)" stroke="#e8ff47" strokeWidth={2} name="Fitness" dot={false} />
+              <Area type="monotone" dataKey="atl" fill="rgba(249,115,22,.08)" stroke="#f97316" strokeWidth={1.5} name="Fatigue" dot={false} />
+              <Line type="monotone" dataKey="tsb" stroke="#38bdf8" strokeWidth={1.5} name="Form" dot={false} strokeDasharray="4 3" />
+              <ReferenceLine y={0} stroke="var(--card-border)" strokeDasharray="3 3" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="dash-chart-empty">
+            <div className="dash-chart-empty-bars">
+              {[30,50,40,65,45,70,55].map((h, i) => (
+                <div key={i} className="dash-chart-empty-bar" style={{ height: h }} />
+              ))}
+            </div>
+            <div className="dash-chart-empty-label">Import workouts to see your fitness trend</div>
+          </div>
         )}
       </div>
 
@@ -1084,15 +1070,11 @@ const parseFIT = async (arrayBuffer, fileName = "", athleteMaxHR = 190, customZo
   // Sanity clamp: 4:00/mi – 20:00/mi
   avgPace = Math.min(Math.max(avgPace, 240), 1200);
 
-  const elevArr  = stream.map(r => r.elevation).filter(e => e != null && e > 0);
+  const elevArr  = stream.map(r => r.elevation).filter(Boolean);
   const elevGain = sessionMeta.totalAscent != null
-    ? Math.round(sessionMeta.totalAscent * 3.28084)  // m→ft from device
+    ? Math.round(sessionMeta.totalAscent * 3.28084)  // m→ft
     : elevArr.length > 1
-      ? Math.round(elevArr.reduce((sum, e, i) => {
-          if (i === 0) return sum;
-          const diff = e - elevArr[i-1];
-          return diff > 2 ? sum + diff : sum; // filter GPS noise < 2m
-        }, 0) * 3.28084)  // m→ft
+      ? Math.round(elevArr.reduce((sum, e, i) => i > 0 && e > elevArr[i-1] ? sum + (e - elevArr[i-1]) : sum, 0))
       : 0;
 
   const date = (sessionMeta.startTime ?? startTs ?? new Date()).toISOString().split("T")[0];
@@ -1252,16 +1234,10 @@ const parseGPX = (xmlText, athleteMaxHR = 190, customZones = null, athleteRestin
     ? Math.min(Math.max(Math.round((durationMin / totalMi) * 60), 240), 1200)
     : validPaces.length ? Math.round(validPaces.reduce((s,p)=>s+p.pace,0)/validPaces.length) : 480;
 
-  const elevArr = stream.map(p=>p.elevation).filter(e => e != null && e > 0);
-  // GPX elevation is in metres — convert to feet, filter noise < 2m per step
-  const elevGainM = elevArr.length > 1
-    ? elevArr.reduce((sum, e, i) => {
-        if (i === 0) return sum;
-        const diff = e - elevArr[i-1];
-        return diff > 2 ? sum + diff : sum;  // ignore < 2m steps (GPS noise)
-      }, 0)
+  const elevArr = stream.map(p=>p.elevation).filter(Boolean);
+  const elevGain = elevArr.length > 1
+    ? Math.round(elevArr.reduce((sum,e,i) => i > 0 && e > elevArr[i-1] ? sum + (e - elevArr[i-1]) : sum, 0))
     : 0;
-  const elevGain = Math.round(elevGainM * 3.28084); // metres → feet
 
   const tss = Math.round((durationMin / 60) * 65); // rough aerobic TSS estimate
 
@@ -2438,29 +2414,15 @@ const PredictionsSection = ({ athlete, uploadedWorkouts, units, resolvedAthleteM
 };
 
 const RecoverySection = ({ athlete, uploadedWorkouts }) => {
-  // ── Wellness daily log (persisted to localStorage) ────────────────────────
-  const todayKey = new Date().toISOString().split("T")[0];
-  const loadWellness = () => {
-    try { return JSON.parse(localStorage.getItem(`apex_wellness_${todayKey}`)) || {}; } catch { return {}; }
-  };
-  const [wellness, setWellnessState] = useState(loadWellness);
-  const setWellness = (updates) => {
-    const next = { ...wellness, ...updates };
-    setWellnessState(next);
-    try { localStorage.setItem(`apex_wellness_${todayKey}`, JSON.stringify(next)); } catch {}
-  };
-
-  const sleepHrs    = parseFloat(wellness.sleep)    || 0;
-  const sleepQual   = parseInt(wellness.sleepQual)  || 0; // 1–5
-  const morningHRV  = parseFloat(wellness.hrv)      || 0;
-  const soreness    = parseInt(wellness.soreness)   || 0; // 1–5 (1=none, 5=very sore)
-  const energy      = parseInt(wellness.energy)     || 0; // 1–5 (1=exhausted, 5=great)
-
-  // ── Core fitness model ────────────────────────────────────────────────────
+  // ── Core fitness model ────────────────────────────────────────────────────────
+  // ATL (Acute Training Load) = 7-day EMA of daily TSS  → represents fatigue / strain
+  // CTL (Chronic Training Load) = 42-day EMA of daily TSS → represents fitness
+  // TSB (Training Stress Balance) = CTL - ATL → represents form / freshness
   const today = new Date();
   const tssMap = {};
   uploadedWorkouts.forEach(w => { tssMap[w.date] = (tssMap[w.date] || 0) + (w.tss || 0); });
 
+  // Build 42-day history for the chart
   const historyDays = 42;
   let ctl = 0, atl = 0;
   const fitnessHistory = [];
@@ -2484,42 +2446,14 @@ const RecoverySection = ({ athlete, uploadedWorkouts }) => {
   const ctlVal    = parseFloat(latest.ctl.toFixed(1));
   const tsbVal    = parseFloat(latest.tsb.toFixed(1));
 
+  // Strain ring max = max possible ATL given athlete's recent training ceiling
+  // Cap at 100 for display scaling; ring shows proportional load
   const strainMax  = 100;
   const strainPct  = Math.min(1, strainVal / strainMax);
   const strainColor = strainPct > 0.6 ? "#ef4444" : strainPct > 0.35 ? "#f97316" : "var(--accent)";
 
-  // ── Readiness: TSB base + wellness adjustments ───────────────────────────
-  // Base score from TSB (50 = neutral)
-  let readinessPct = Math.round(50 + tsbVal * 1.5);
-
-  // Sleep duration: optimal 7–9h. < 6h = penalty, > 9h = small bonus
-  if (sleepHrs > 0) {
-    if      (sleepHrs >= 8)   readinessPct += 8;
-    else if (sleepHrs >= 7)   readinessPct += 4;
-    else if (sleepHrs >= 6)   readinessPct += 0;
-    else if (sleepHrs >= 5)   readinessPct -= 8;
-    else                       readinessPct -= 16;
-  }
-
-  // Sleep quality 1–5: 3 = neutral
-  if (sleepQual > 0) readinessPct += (sleepQual - 3) * 4;
-
-  // Morning HRV vs baseline: if > baseline, bonus; if < baseline, penalty
-  const baseHRV = parseInt(athlete.hrv) || 60;
-  if (morningHRV > 0) {
-    const hrvDiff = ((morningHRV - baseHRV) / baseHRV) * 100;
-    readinessPct += Math.round(Math.max(-15, Math.min(15, hrvDiff * 0.5)));
-  }
-
-  // Soreness 1–5: 1 = none (bonus), 5 = very sore (penalty)
-  if (soreness > 0) readinessPct += (3 - soreness) * 3;
-
-  // Energy 1–5: 1 = exhausted, 5 = great
-  if (energy > 0) readinessPct += (energy - 3) * 4;
-
-  readinessPct = Math.min(100, Math.max(0, readinessPct));
-
-  const hasWellness = sleepHrs > 0 || sleepQual > 0 || morningHRV > 0 || soreness > 0 || energy > 0;
+  // Readiness: TSB-based, clamped 0–100
+  const readinessPct   = Math.min(100, Math.max(0, Math.round(50 + tsbVal * 1.5)));
   const readinessLabel = readinessPct >= 70 ? "High" : readinessPct >= 45 ? "Moderate" : "Low";
   const readinessColor = readinessPct >= 70 ? "#34d399" : readinessPct >= 45 ? "#fbbf24" : "#ef4444";
 
@@ -2530,30 +2464,28 @@ const RecoverySection = ({ athlete, uploadedWorkouts }) => {
     ? Math.floor((today - new Date(lastWorkout.date + "T12:00:00")) / 86400000)
     : null;
 
+  // Last 7 days TSS total
   const last7TSS = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today); d.setDate(today.getDate() - i);
     return tssMap[d.toISOString().split("T")[0]] || 0;
   }).reduce((a, b) => a + b, 0);
 
+  // Week-over-week TSS change
   const prev7TSS = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today); d.setDate(today.getDate() - (7 + i));
     return tssMap[d.toISOString().split("T")[0]] || 0;
   }).reduce((a, b) => a + b, 0);
   const loadChange = prev7TSS > 0 ? Math.round(((last7TSS - prev7TSS) / prev7TSS) * 100) : null;
 
+  // ── Suggestion ───────────────────────────────────────────────────────────────
   const suggestion = readinessPct >= 70
     ? "Ready for quality — threshold intervals or race-pace work"
     : readinessPct >= 45
     ? "Moderate effort — aerobic or easy tempo"
     : "Prioritise recovery — easy jog, walk, or full rest";
 
-  const hasData = uploadedWorkouts.length > 0;
-  // ── Risk factors ──────────────────────────────────────────────────────────
+  // ── Risk factors ─────────────────────────────────────────────────────────────
   const risks = [];
-  if (sleepHrs > 0 && sleepHrs < 6) risks.push({ type: "warn", msg: `Only ${sleepHrs}h sleep — recovery is significantly impaired.` });
-  if (soreness >= 4) risks.push({ type: "warn", msg: "High muscle soreness — avoid high-intensity work today." });
-  if (morningHRV > 0 && morningHRV < (parseInt(athlete.hrv) || 60) * 0.85) risks.push({ type: "warn", msg: `HRV ${morningHRV}ms is well below your baseline — body is under stress.` });
-  if (energy <= 2 && energy > 0) risks.push({ type: "warn", msg: "Low energy reported — listen to your body today." });
   if (tsbVal < -20)                    risks.push({ type: "warn", msg: `High fatigue — TSB at ${tsbVal.toFixed(1)}. Injury risk elevated.` });
   else if (tsbVal < -10)               risks.push({ type: "warn", msg: `Moderate fatigue — TSB at ${tsbVal.toFixed(1)}. Limit intensity.` });
   if (loadChange !== null && loadChange > 30) risks.push({ type: "warn", msg: `Weekly load up ${loadChange}% vs last week — monitor for overreaching.` });
@@ -2583,6 +2515,7 @@ const RecoverySection = ({ athlete, uploadedWorkouts }) => {
   const strainAfterEasy      = parseFloat(((strainVal * (1 - 1/7)) + easyRunTSS / 7).toFixed(1));
   const strainAfterIntervals = parseFloat(((strainVal * (1 - 1/7)) + intervalsTSS / 7).toFixed(1));
 
+  const hasData = uploadedWorkouts.length > 0;
   return (
     <>
 
@@ -3687,9 +3620,9 @@ function App() {
           .stat-value             { font-size: 28px; }
           .stat-sub               { font-size: 12px; }
 
-          /* Dashboard welcome */
-          .dash-welcome-greeting  { font-size: 15px; }
-          .dash-welcome-name      { font-size: 38px; }
+          /* Dashboard quote */
+          .dash-quote-text        { font-size: 16px; }
+          .dash-quote-author      { font-size: 13px; }
           .drc-label              { font-size: 12px; }
           .drc-suggestion         { font-size: 15px; }
           .drc-stat-val           { font-size: 24px; }
@@ -3800,12 +3733,16 @@ function App() {
         /* ── DASHBOARD MOBILE ──────────────────────────────────────── */
         .dash-mobile { display: flex; flex-direction: column; gap: 14px; padding-top: 48px; }
 
-        .dash-welcome { padding: 4px 2px 0; }
-        .dash-welcome-greeting { font-size: 14px; color: var(--text3); font-weight: 400; }
-        .dash-welcome-name {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-size: 36px; font-weight: 800; color: var(--text1);
-          letter-spacing: -0.5px; line-height: 1.05;
+        .dash-quote {
+          padding: 4px 2px 0;
+        }
+        .dash-quote-text {
+          font-size: 15px; color: var(--text2); font-style: italic;
+          line-height: 1.5; letter-spacing: 0.1px;
+        }
+        .dash-quote-author {
+          font-size: 12px; color: var(--text3); margin-top: 6px;
+          font-weight: 500;
         }
 
         /* Readiness card */
@@ -4594,40 +4531,15 @@ function App() {
         .apv-edit-label { font-size: 13px; color: var(--text2); flex: 1; }
         .apv-edit-input-wrap { display: flex; align-items: center; gap: 6px; }
 
-        /* Avatar photo upload */
-        .apv-avatar-wrap {
-          position: relative; flex-shrink: 0;
-          width: 52px; height: 52px; border-radius: 50%;
-          cursor: pointer; overflow: hidden;
-        }
-        .apv-avatar-wrap:hover .apv-avatar-overlay { opacity: 1; }
-        .apv-avatar-photo {
-          width: 52px; height: 52px; border-radius: 50%;
-          object-fit: cover; display: block;
-          border: 2px solid rgba(232,255,71,.3);
-        }
-        .apv-avatar-overlay {
-          position: absolute; inset: 0; border-radius: 50%;
-          background: rgba(0,0,0,.5); opacity: 0;
-          display: flex; align-items: center; justify-content: center;
-          color: #fff; transition: opacity .2s;
-        }
-        .apv-avatar-wrap .apv-avatar {
-          width: 52px; height: 52px;
-        }
-
-        /* HR chips — centred */
-        .apv-hr-chip {
-          background: var(--bg3); border: 1px solid var(--card-border);
-          border-radius: 10px; padding: 12px 14px;
-          display: flex; flex-direction: column;
-          align-items: center; justify-content: center;
-          text-align: center; gap: 3px;
-        }
         /* HR grid — 2×2 */
         .apv-hr-grid {
           display: grid; grid-template-columns: 1fr 1fr;
           gap: 10px; margin-top: 10px;
+        }
+        .apv-hr-chip {
+          background: var(--bg3); border: 1px solid var(--card-border);
+          border-radius: 10px; padding: 12px 14px;
+          display: flex; flex-direction: column; gap: 3px;
         }
         .apv-hr-val {
           font-family: 'Barlow Condensed', sans-serif;
@@ -4678,34 +4590,7 @@ function App() {
         .zone-range { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; color: var(--text); }
         .zone-pct { font-size: 14px; color: var(--text3); width: 80px; text-align: right; }
         
-        /* ── WELLNESS LOG ──────────────────────────────────────────── */
-        .wellness-grid {
-          display: grid; grid-template-columns: 1fr 1fr;
-          gap: 14px; margin-top: 8px;
-        }
-        .wellness-item { display: flex; flex-direction: column; gap: 8px; }
-        .wellness-label {
-          font-size: 12px; color: var(--text3); font-weight: 500;
-          display: flex; align-items: center; text-transform: uppercase; letter-spacing: 0.5px;
-        }
-        .wellness-input-row { display: flex; align-items: center; gap: 8px; }
-        .wellness-input {
-          width: 72px; padding: 8px 10px; border-radius: 8px;
-          border: 1px solid var(--card-border); background: var(--bg3);
-          color: var(--text1); font-size: 18px; font-family: 'Barlow Condensed', sans-serif;
-          font-weight: 700; text-align: center;
-        }
-        .wellness-input:focus { outline: none; border-color: var(--accent); }
-        .wellness-unit { font-size: 13px; color: var(--text3); }
-        .wellness-dots { display: flex; align-items: center; gap: 6px; }
-        .wellness-dot {
-          width: 26px; height: 26px; border-radius: 50%;
-          border: 2px solid var(--dot-color, var(--card-border));
-          background: transparent; cursor: pointer; padding: 0;
-          transition: background .15s, border-color .15s;
-        }
-        .wellness-dot.active { background: var(--dot-color); }
-        .wellness-dot-label { font-size: 11px; color: var(--text3); margin-left: 4px; min-width: 24px; }
+        /* RECOVERY FULL */
         .recovery-full {
           display: flex; align-items: stretch; gap: 0; margin-top: 16px;
         }
@@ -5551,14 +5436,75 @@ export default function PhoneFrame() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#0c0c0e",
+      background: "#050505",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
+      padding: "24px 0",
       fontFamily: "Inter, sans-serif",
     }}>
-      <div style={{ width: 393, height: 852, overflow: "hidden", position: "relative", background: "#0c0c0e" }} className="phone-frame-root">
-        <App />
+      {/* Phone shell */}
+      <div style={{
+        position: "relative",
+        width: 393,
+        height: 852,
+        background: "#1a1a1a",
+        borderRadius: 54,
+        boxShadow: `
+          0 0 0 1px #333,
+          0 0 0 2px #111,
+          0 30px 80px rgba(0,0,0,.8),
+          inset 0 0 0 2px #2a2a2a
+        `,
+        overflow: "hidden",
+        flexShrink: 0,
+      }}>
+        {/* Dynamic Island */}
+        <div style={{
+          position: "absolute",
+          top: 12,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 126,
+          height: 37,
+          background: "#000",
+          borderRadius: 20,
+          zIndex: 9999,
+        }} />
+
+        {/* Screen */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: 54,
+          overflow: "hidden",
+          background: "#0c0c0e",
+        }}>
+          {/* Force mobile breakpoint by constraining to 393px */}
+          <div style={{ width: 393, height: 852, overflow: "hidden", position: "relative" }} className="phone-frame-root">
+            <App />
+          </div>
+        </div>
+
+        {/* Side buttons — left */}
+        <div style={{ position: "absolute", left: -3, top: 120, width: 4, height: 36, background: "#2a2a2a", borderRadius: "2px 0 0 2px" }} />
+        <div style={{ position: "absolute", left: -3, top: 168, width: 4, height: 68, background: "#2a2a2a", borderRadius: "2px 0 0 2px" }} />
+        <div style={{ position: "absolute", left: -3, top: 248, width: 4, height: 68, background: "#2a2a2a", borderRadius: "2px 0 0 2px" }} />
+        {/* Power button — right */}
+        <div style={{ position: "absolute", right: -3, top: 180, width: 4, height: 90, background: "#2a2a2a", borderRadius: "0 2px 2px 0" }} />
+
+        {/* Home indicator */}
+        <div style={{
+          position: "absolute",
+          bottom: 10,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 134,
+          height: 5,
+          background: "rgba(255,255,255,.35)",
+          borderRadius: 3,
+          zIndex: 9999,
+        }} />
       </div>
     </div>
   );
@@ -5570,22 +5516,6 @@ const AthleteView = ({ athlete, setAthlete, customZones, setCustomZones, units, 
   const [editingZones, setEditingZones] = useState(false);
   const [zoneDraft, setZoneDraft] = useState([...customZones]);
   const [zonesSaved, setZonesSaved] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState(() => {
-    try { return localStorage.getItem("apex_photo") || null; } catch { return null; }
-  });
-  const photoInputRef = useRef(null);
-
-  const handlePhotoChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target.result;
-      setPhotoUrl(url);
-      try { localStorage.setItem("apex_photo", url); } catch {}
-    };
-    reader.readAsDataURL(file);
-  };
 
   // Keep zoneDraft in sync when customZones change externally (e.g. maxHR update)
   const prevZones = useRef(customZones);
@@ -5721,14 +5651,7 @@ const AthleteView = ({ athlete, setAthlete, customZones, setCustomZones, units, 
 
       {/* ── Header: avatar + name + edit button ── */}
       <div className="card apv-header">
-        <div className="apv-avatar-wrap" onClick={() => photoInputRef.current?.click()} title="Tap to change photo">
-          {photoUrl
-            ? <img src={photoUrl} alt="Profile" className="apv-avatar-photo" />
-            : <div className="apv-avatar">{initials}</div>
-          }
-          <div className="apv-avatar-overlay"><Icon name="upload" size={14} /></div>
-          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoChange} />
-        </div>
+        <div className="apv-avatar">{initials}</div>
         <div className="apv-info">
           <div className="apv-name">{athlete.name}</div>
           <div className="apv-goal"><Icon name="target" size={11} style={{marginRight:4}} />{athlete.goal}</div>
