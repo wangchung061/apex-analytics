@@ -436,13 +436,81 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
     ? { value: perfVO2maxDash.value }
     : { value: parseFloat((15 * (parseInt(athlete.maxHR)||192) / (parseInt(athlete.restingHR)||42)).toFixed(1)) };
 
-  // Readiness — defaults to 50 when no data
-  const readinessPct  = hasData ? Math.min(100, Math.max(0, Math.round(50 + latest.tsb * 1.5))) : 50;
+  // Greeting
+  const hour = new Date().getHours();
+  const timeGreeting =
+    hour < 5  ? "Good night" :
+    hour < 12 ? "Good morning" :
+    hour < 17 ? "Good afternoon" : "Good evening";
+
+  // Today's wellness — keyed by date so it resets daily automatically
+  const todayKey = today.toISOString().split("T")[0];
+  const loadWellness = () => {
+    try { return JSON.parse(localStorage.getItem(`apex_wellness_${todayKey}`)) || {}; } catch { return {}; }
+  };
+  const [wellness, setWellnessState]   = useState(loadWellness);
+  const [submitted, setSubmittedState] = useState(() => {
+    try { return localStorage.getItem(`apex_wellness_submitted_${todayKey}`) === "1"; } catch { return false; }
+  });
+  const [draft, setDraftState] = useState(loadWellness); // editing draft before submit
+
+  const setDraft = (updates) => setDraftState(prev => ({ ...prev, ...updates }));
+
+  const handleSubmitWellness = () => {
+    setWellnessState(draft);
+    try {
+      localStorage.setItem(`apex_wellness_${todayKey}`, JSON.stringify(draft));
+      localStorage.setItem(`apex_wellness_submitted_${todayKey}`, "1");
+    } catch {}
+    setSubmittedState(true);
+  };
+
+  const handleEditWellness = () => setSubmittedState(false);
+
+  // Decode submitted wellness values
+  const sleepHrs  = parseFloat(wellness.sleepH || 0) + (parseFloat(wellness.sleepM || 0) / 60);
+  const sleepQual = parseInt(wellness.sleepQual) || 0;
+  const wHRV      = parseFloat(wellness.hrv)     || 0;
+  const soreness  = parseInt(wellness.soreness)  || 0;
+  const energy    = parseInt(wellness.energy)    || 0;
+
+  // Draft values for the form
+  const dSleepH   = draft.sleepH   || "";
+  const dSleepM   = draft.sleepM   || "";
+  const dSleepQ   = parseInt(draft.sleepQual) || 0;
+  const dHRV      = draft.hrv      || "";
+  const dSoreness = parseInt(draft.soreness)  || 0;
+  const dEnergy   = parseInt(draft.energy)    || 0;
+
+  // Apply wellness adjustments to readiness
+  let readinessPct = hasData ? Math.round(50 + latest.tsb * 1.5) : 50;
+  const wellnessApplied = submitted && (sleepHrs > 0 || sleepQual > 0 || wHRV > 0 || soreness > 0 || energy > 0);
+
+  if (wellnessApplied) {
+    // Sleep duration
+    if      (sleepHrs >= 8)  readinessPct += 8;
+    else if (sleepHrs >= 7)  readinessPct += 4;
+    else if (sleepHrs >= 6)  readinessPct += 0;
+    else if (sleepHrs >= 5)  readinessPct -= 8;
+    else if (sleepHrs > 0)   readinessPct -= 16;
+    // Sleep quality (3 = neutral)
+    if (sleepQual > 0) readinessPct += (sleepQual - 3) * 4;
+    // HRV vs baseline
+    const baseHRV = parseInt(athlete.hrv) || 60;
+    if (wHRV > 0) readinessPct += Math.round(Math.max(-15, Math.min(15, ((wHRV - baseHRV) / baseHRV) * 50)));
+    // Soreness (3 = neutral)
+    if (soreness > 0) readinessPct += (3 - soreness) * 3;
+    // Energy (3 = neutral)
+    if (energy > 0)   readinessPct += (energy - 3) * 4;
+  }
+
+  readinessPct = Math.min(100, Math.max(0, readinessPct));
+
   const readinessLabel =
-    !hasData           ? "No Data"     :
-    readinessPct >= 75 ? "Race Ready"  :
-    readinessPct >= 55 ? "Good"        :
-    readinessPct >= 35 ? "Moderate"    : "Recover";
+    !hasData           ? "No Data"    :
+    readinessPct >= 75 ? "Race Ready" :
+    readinessPct >= 55 ? "Good"       :
+    readinessPct >= 35 ? "Moderate"   : "Recover";
   const readinessColor =
     !hasData           ? "var(--card-border)" :
     readinessPct >= 75 ? "#00d4aa"  :
@@ -465,7 +533,7 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
                          "Rest or a very easy walk. Let your body recover.";
 
   // This week distance
-  const weekStart = new Date(today); 
+  const weekStart = new Date(today);
   weekStart.setDate(today.getDate() - today.getDay());
   weekStart.setHours(0, 0, 0, 0);
   const weekDist = uploadedWorkouts
@@ -479,34 +547,8 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
   const R = 80, STROKE = 10;
   const circ = 2 * Math.PI * R;
   const dash = circ * (readinessPct / 100);
-
-
-  // Greeting
-  const hour = new Date().getHours();
-  const timeGreeting =
-    hour < 5  ? "Good night" :
-    hour < 12 ? "Good morning" :
-    hour < 17 ? "Good afternoon" : "Good evening";
-
-  // Today's wellness from localStorage
-  const todayKey = today.toISOString().split("T")[0];
-  const loadWellness = () => { try { return JSON.parse(localStorage.getItem(`apex_wellness_${todayKey}`)) || {}; } catch { return {}; } };
-  const [wellness, setWellnessState] = useState(loadWellness);
-  const setWellness = (updates) => {
-    const next = { ...wellness, ...updates };
-    setWellnessState(next);
-    try { localStorage.setItem(`apex_wellness_${todayKey}`, JSON.stringify(next)); } catch {}
-  };
-  const sleepHrs  = parseFloat(wellness.sleep)   || 0;
-  const sleepQual = parseInt(wellness.sleepQual) || 0;
-  const wHRV      = parseFloat(wellness.hrv)     || 0;
-  const soreness  = parseInt(wellness.soreness)  || 0;
-  const energy    = parseInt(wellness.energy)    || 0;
-
   return (
-    <div className="dash-mobile">
-
-      {/* ── Welcome ── */}
+    <div className="view-grid">
       <div className="dash-welcome">
         <div className="dash-welcome-greeting">{timeGreeting},</div>
         <div className="dash-welcome-name">{athlete.name.split(" ")[0]}</div>
@@ -514,58 +556,113 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
 
       {/* ── Today's Wellness ── */}
       <div className="card full-width">
-        <h3>Today's Wellness</h3>
-        <p className="card-sub">Log your morning stats to improve readiness accuracy</p>
-        <div className="wellness-grid">
-          <div className="wellness-item">
-            <div className="wellness-label"><Icon name="sleep" size={13} style={{marginRight:5}} />Sleep</div>
-            <div className="wellness-input-row">
-              <input className="wellness-input" type="number" min="0" max="12" step="0.5"
-                placeholder="0" value={wellness.sleep || ""}
-                onChange={e => setWellness({ sleep: e.target.value })} />
-              <span className="wellness-unit">hrs</span>
-            </div>
+        <div className="wellness-header">
+          <div>
+            <h3>Today's Wellness</h3>
+            <p className="card-sub">{submitted && wellnessApplied ? "✓ Applied to readiness score" : "Submit to update your readiness score"}</p>
           </div>
-          <div className="wellness-item">
-            <div className="wellness-label"><Icon name="star" size={13} style={{marginRight:5}} />Sleep Quality</div>
-            <div className="wellness-dots">
-              {[1,2,3,4,5].map(v => (
-                <button key={v} className={`wellness-dot ${sleepQual >= v ? "active" : ""}`}
-                  style={{ "--dot-color": sleepQual >= v ? "#38bdf8" : "var(--card-border)" }}
-                  onClick={() => setWellness({ sleepQual: sleepQual === v ? 0 : v })} />
-              ))}
-            </div>
-          </div>
-          <div className="wellness-item">
-            <div className="wellness-label"><Icon name="heart" size={13} style={{marginRight:5}} />Morning HRV</div>
-            <div className="wellness-input-row">
-              <input className="wellness-input" type="number" min="0" max="200"
-                placeholder="0" value={wellness.hrv || ""}
-                onChange={e => setWellness({ hrv: e.target.value })} />
-              <span className="wellness-unit">ms</span>
-            </div>
-          </div>
-          <div className="wellness-item">
-            <div className="wellness-label"><Icon name="warn" size={13} style={{marginRight:5}} />Soreness</div>
-            <div className="wellness-dots">
-              {[1,2,3,4,5].map(v => (
-                <button key={v} className={`wellness-dot ${soreness >= v ? "active" : ""}`}
-                  style={{ "--dot-color": soreness >= v ? "#f97316" : "var(--card-border)" }}
-                  onClick={() => setWellness({ soreness: soreness === v ? 0 : v })} />
-              ))}
-            </div>
-          </div>
-          <div className="wellness-item">
-            <div className="wellness-label"><Icon name="power" size={13} style={{marginRight:5}} />Energy</div>
-            <div className="wellness-dots">
-              {[1,2,3,4,5].map(v => (
-                <button key={v} className={`wellness-dot ${energy >= v ? "active" : ""}`}
-                  style={{ "--dot-color": energy >= v ? "var(--accent)" : "var(--card-border)" }}
-                  onClick={() => setWellness({ energy: energy === v ? 0 : v })} />
-              ))}
-            </div>
-          </div>
+          {submitted && <button className="wellness-edit-btn" onClick={handleEditWellness}>Edit</button>}
         </div>
+
+        {submitted ? (
+          /* ── Summary view after submit ── */
+          <div className="wellness-summary">
+            <div className="wellness-summary-item">
+              <span className="wellness-summary-label">Sleep</span>
+              <span className="wellness-summary-val">{draft.sleepH || 0}h {draft.sleepM || 0}m</span>
+            </div>
+            <div className="wellness-summary-item">
+              <span className="wellness-summary-label">Quality</span>
+              <span className="wellness-summary-val">{dSleepQ > 0 ? `${dSleepQ}/5` : "—"}</span>
+            </div>
+            <div className="wellness-summary-item">
+              <span className="wellness-summary-label">HRV</span>
+              <span className="wellness-summary-val">{draft.hrv ? `${draft.hrv} ms` : "—"}</span>
+            </div>
+            <div className="wellness-summary-item">
+              <span className="wellness-summary-label">Soreness</span>
+              <span className="wellness-summary-val">{dSoreness > 0 ? ["", "None", "Mild", "Moderate", "High", "Severe"][dSoreness] : "—"}</span>
+            </div>
+            <div className="wellness-summary-item">
+              <span className="wellness-summary-label">Energy</span>
+              <span className="wellness-summary-val">{dEnergy > 0 ? ["", "Exhausted", "Low", "OK", "Good", "Great"][dEnergy] : "—"}</span>
+            </div>
+          </div>
+        ) : (
+          /* ── Input form ── */
+          <>
+            <div className="wellness-grid">
+
+              {/* Sleep — hours + minutes */}
+              <div className="wellness-item wellness-item--wide">
+                <div className="wellness-label"><Icon name="sleep" size={13} style={{marginRight:5}} />Sleep Duration</div>
+                <div className="wellness-input-row">
+                  <input className="wellness-input" type="number" min="0" max="14" step="1"
+                    placeholder="0" value={dSleepH}
+                    onChange={e => setDraft({ sleepH: e.target.value })} />
+                  <span className="wellness-unit">h</span>
+                  <input className="wellness-input" type="number" min="0" max="59" step="5"
+                    placeholder="0" value={dSleepM}
+                    onChange={e => setDraft({ sleepM: e.target.value })} />
+                  <span className="wellness-unit">m</span>
+                </div>
+              </div>
+
+              {/* Sleep quality */}
+              <div className="wellness-item">
+                <div className="wellness-label"><Icon name="star" size={13} style={{marginRight:5}} />Sleep Quality</div>
+                <div className="wellness-dots">
+                  {[1,2,3,4,5].map(v => (
+                    <button key={v} className={`wellness-dot ${dSleepQ >= v ? "active" : ""}`}
+                      style={{ "--dot-color": dSleepQ >= v ? "#38bdf8" : "var(--card-border)" }}
+                      onClick={() => setDraft({ sleepQual: dSleepQ === v ? 0 : v })} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Morning HRV */}
+              <div className="wellness-item">
+                <div className="wellness-label"><Icon name="heart" size={13} style={{marginRight:5}} />Morning HRV</div>
+                <div className="wellness-input-row">
+                  <input className="wellness-input" type="number" min="0" max="200"
+                    placeholder="0" value={dHRV}
+                    onChange={e => setDraft({ hrv: e.target.value })} />
+                  <span className="wellness-unit">ms</span>
+                </div>
+              </div>
+
+              {/* Soreness */}
+              <div className="wellness-item">
+                <div className="wellness-label"><Icon name="warn" size={13} style={{marginRight:5}} />Soreness</div>
+                <div className="wellness-dots">
+                  {[1,2,3,4,5].map(v => (
+                    <button key={v} className={`wellness-dot ${dSoreness >= v ? "active" : ""}`}
+                      style={{ "--dot-color": dSoreness >= v ? "#f97316" : "var(--card-border)" }}
+                      onClick={() => setDraft({ soreness: dSoreness === v ? 0 : v })} />
+                  ))}
+                  <span className="wellness-dot-label">{dSoreness === 0 ? "" : ["","None","Mild","Mod","High","Max"][dSoreness]}</span>
+                </div>
+              </div>
+
+              {/* Energy */}
+              <div className="wellness-item">
+                <div className="wellness-label"><Icon name="power" size={13} style={{marginRight:5}} />Energy</div>
+                <div className="wellness-dots">
+                  {[1,2,3,4,5].map(v => (
+                    <button key={v} className={`wellness-dot ${dEnergy >= v ? "active" : ""}`}
+                      style={{ "--dot-color": dEnergy >= v ? "var(--accent)" : "var(--card-border)" }}
+                      onClick={() => setDraft({ energy: dEnergy === v ? 0 : v })} />
+                  ))}
+                  <span className="wellness-dot-label">{dEnergy === 0 ? "" : ["","Low","Low","OK","Good","Great"][dEnergy]}</span>
+                </div>
+              </div>
+
+            </div>
+            <button className="wellness-submit-btn" onClick={handleSubmitWellness}>
+              <Icon name="tip" size={14} style={{marginRight:6}} />Submit & Update Readiness
+            </button>
+          </>
+        )}
       </div>
 
       {/* ── Readiness focal card ── */}
@@ -4161,6 +4258,7 @@ function App() {
           flex-shrink: 0;
         }
         .wl-upload-btn:hover { background: rgba(232,255,71,.18); }
+        .upload-btn {
           background: var(--lime);
           color: #0c0c0e;
           border: none;
@@ -4679,10 +4777,42 @@ function App() {
         .zone-pct { font-size: 14px; color: var(--text3); width: 80px; text-align: right; }
         
         /* ── WELLNESS LOG ──────────────────────────────────────────── */
+        .wellness-header {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          margin-bottom: 4px;
+        }
+        .wellness-edit-btn {
+          padding: 6px 12px; border-radius: 8px; font-size: 12px;
+          border: 1px solid var(--card-border); background: transparent;
+          color: var(--text3); cursor: pointer; white-space: nowrap;
+          transition: border-color .15s, color .15s; flex-shrink: 0;
+        }
+        .wellness-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .wellness-submit-btn {
+          width: 100%; margin-top: 14px; padding: 12px;
+          border-radius: 10px; border: none; cursor: pointer;
+          background: var(--accent); color: #0c0c0e;
+          font-size: 14px; font-weight: 700; font-family: 'Inter', sans-serif;
+          display: flex; align-items: center; justify-content: center;
+          transition: opacity .15s;
+        }
+        .wellness-submit-btn:hover { opacity: 0.88; }
+        .wellness-summary {
+          display: flex; flex-direction: column; gap: 0; margin-top: 8px;
+        }
+        .wellness-summary-item {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 10px 0; border-bottom: 1px solid var(--card-border);
+          font-size: 14px;
+        }
+        .wellness-summary-item:last-child { border-bottom: none; }
+        .wellness-summary-label { color: var(--text3); }
+        .wellness-summary-val { font-weight: 600; color: var(--text1); font-family: 'Barlow Condensed', sans-serif; font-size: 16px; }
         .wellness-grid {
           display: grid; grid-template-columns: 1fr 1fr;
           gap: 14px; margin-top: 8px;
         }
+        .wellness-item--wide { grid-column: span 2; }
         .wellness-item { display: flex; flex-direction: column; gap: 8px; }
         .wellness-label {
           font-size: 12px; color: var(--text3); font-weight: 500;
