@@ -577,236 +577,300 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
   const R = 80, STROKE = 10;
   const circ = 2 * Math.PI * R;
   const dash = circ * (readinessPct / 100);
-  return (
-    <div className="view-grid">
-      <div className="dash-welcome">
-        <div className="dash-welcome-greeting">{timeGreeting},</div>
-        <div className="dash-welcome-name">{athlete.name.split(" ")[0]}</div>
-      </div>
+  // Strain ring helpers
+  const mkRing = (pct, r, stroke, color, glow) => {
+    const c = 2 * Math.PI * r;
+    const d = c * Math.min(1, Math.max(0, pct));
+    return { c, d, color, r, stroke, glow };
+  };
+  const strainPct  = hasData ? Math.min(1, latest.atl / 21) : 0;
+  const recoveryPct = readinessPct / 100;
+  const sleepPct   = wellnessApplied && sleepHrs > 0 ? Math.min(1, sleepHrs / 9) : 0;
 
-      {/* ── Today's Wellness ── */}
-      <div className="card full-width">
-        <div className="wellness-header">
-          <div>
-            <h3>Today's Wellness</h3>
-            <p className="card-sub">{submitted && wellnessApplied ? "✓ Applied to readiness score" : "Submit to update your readiness score"}</p>
+  const strainColor   = strainPct > 0.75 ? "#ef4444" : strainPct > 0.5 ? "#f97316" : "#38bdf8";
+  const recovColor    = readinessColor;
+  const sleepColor    = sleepPct >= 0.85 ? "#00d4aa" : sleepPct >= 0.65 ? "#e8ff47" : "#f97316";
+
+  const dayLabel = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+  return (
+    <div className="whoop-dash">
+
+      {/* ── HERO HEADER ── */}
+      <div className="whoop-hero">
+        <div className="whoop-hero-top">
+          <div className="whoop-greeting">
+            <div className="whoop-hello">{timeGreeting},</div>
+            <div className="whoop-name">{athlete.name.split(" ")[0]}</div>
           </div>
-          {submitted && <button className="wellness-edit-btn" onClick={handleEditWellness}>Edit</button>}
+          <div className="whoop-date-pill">{dayLabel}</div>
         </div>
 
-        {submitted ? (
-          /* ── Summary view after submit ── */
-          <div className="wellness-summary">
-            <div className="wellness-summary-item">
-              <span className="wellness-summary-label">Sleep</span>
-              <span className="wellness-summary-val">{draft.sleepH || 0}h {draft.sleepM || 0}m</span>
-            </div>
-            <div className="wellness-summary-item">
-              <span className="wellness-summary-label">Quality</span>
-              <span className="wellness-summary-val">{dSleepQ > 0 ? `${dSleepQ}/5` : "—"}</span>
-            </div>
-            <div className="wellness-summary-item">
-              <span className="wellness-summary-label">HRV</span>
-              <span className="wellness-summary-val">{draft.hrv ? `${draft.hrv} ms` : "—"}</span>
-            </div>
-            <div className="wellness-summary-item">
-              <span className="wellness-summary-label">Soreness</span>
-              <span className="wellness-summary-val">{dSoreness > 0 ? ["", "None", "Mild", "Moderate", "High", "Severe"][dSoreness] : "—"}</span>
-            </div>
-            <div className="wellness-summary-item">
-              <span className="wellness-summary-label">Energy</span>
-              <span className="wellness-summary-val">{dEnergy > 0 ? ["", "Exhausted", "Low", "OK", "Good", "Great"][dEnergy] : "—"}</span>
-            </div>
+        {/* ── THREE SCORE RINGS ── */}
+        <div className="whoop-rings">
+
+          {/* STRAIN */}
+          {(() => {
+            const r = mkRing(strainPct, 52, 7, strainColor);
+            return (
+              <div className="whoop-ring-block">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r={r.r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={r.stroke} />
+                  <circle cx="60" cy="60" r={r.r} fill="none" stroke={r.color} strokeWidth={r.stroke}
+                    strokeDasharray={`${r.d} ${r.c}`} strokeLinecap="round"
+                    transform="rotate(-90 60 60)"
+                    style={{ filter: `drop-shadow(0 0 6px ${r.color}88)`, transition: "stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)" }} />
+                  <text x="60" y="55" textAnchor="middle" fill="#f8fafc" fontSize="22" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">
+                    {hasData ? latest.atl.toFixed(0) : "—"}
+                  </text>
+                  <text x="60" y="70" textAnchor="middle" fill="rgba(255,255,255,.4)" fontSize="9" fontFamily="'Inter',sans-serif" letterSpacing="1">
+                    / 21
+                  </text>
+                </svg>
+                <div className="whoop-ring-label" style={{ color: strainColor }}>STRAIN</div>
+              </div>
+            );
+          })()}
+
+          {/* RECOVERY — centre, larger */}
+          {(() => {
+            const r = mkRing(recoveryPct, 64, 8, recovColor);
+            return (
+              <div className="whoop-ring-block whoop-ring-block--hero">
+                <svg width="148" height="148" viewBox="0 0 148 148">
+                  <circle cx="74" cy="74" r={r.r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={r.stroke} />
+                  {hasData && (
+                    <circle cx="74" cy="74" r={r.r} fill="none" stroke={r.color} strokeWidth={r.stroke + 3}
+                      strokeDasharray={`${r.d} ${r.c}`} strokeLinecap="round"
+                      transform="rotate(-90 74 74)"
+                      opacity="0.2"
+                      style={{ filter: "blur(3px)" }} />
+                  )}
+                  <circle cx="74" cy="74" r={r.r} fill="none" stroke={hasData ? r.color : "rgba(255,255,255,.1)"} strokeWidth={r.stroke}
+                    strokeDasharray={`${r.d} ${r.c}`} strokeLinecap="round"
+                    transform="rotate(-90 74 74)"
+                    style={{ filter: hasData ? `drop-shadow(0 0 8px ${r.color}99)` : "none", transition: "stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)" }} />
+                  <text x="74" y="66" textAnchor="middle" fill={hasData ? "#f8fafc" : "rgba(255,255,255,.3)"} fontSize="36" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">
+                    {hasData ? readinessPct : "—"}
+                  </text>
+                  <text x="74" y="83" textAnchor="middle" fill={hasData ? r.color : "rgba(255,255,255,.2)"} fontSize="10" fontWeight="700" fontFamily="'Barlow Condensed',sans-serif" letterSpacing="2">
+                    {readinessLabel.toUpperCase()}
+                  </text>
+                </svg>
+                <div className="whoop-ring-label" style={{ color: recovColor }}>RECOVERY</div>
+              </div>
+            );
+          })()}
+
+          {/* SLEEP */}
+          {(() => {
+            const r = mkRing(sleepPct, 52, 7, sleepColor);
+            return (
+              <div className="whoop-ring-block">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r={r.r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={r.stroke} />
+                  <circle cx="60" cy="60" r={r.r} fill="none" stroke={sleepPct > 0 ? r.color : "rgba(255,255,255,.1)"} strokeWidth={r.stroke}
+                    strokeDasharray={`${r.d} ${r.c}`} strokeLinecap="round"
+                    transform="rotate(-90 60 60)"
+                    style={{ filter: sleepPct > 0 ? `drop-shadow(0 0 6px ${r.color}88)` : "none", transition: "stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)" }} />
+                  <text x="60" y="55" textAnchor="middle" fill="#f8fafc" fontSize="18" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">
+                    {wellnessApplied && sleepHrs > 0 ? `${Math.floor(sleepHrs)}h${Math.round((sleepHrs % 1) * 60) > 0 ? `${Math.round((sleepHrs % 1) * 60)}m` : ""}` : "—"}
+                  </text>
+                  <text x="60" y="70" textAnchor="middle" fill="rgba(255,255,255,.4)" fontSize="9" fontFamily="'Inter',sans-serif" letterSpacing="1">
+                    {sleepPct > 0 ? `/ 9h` : "log sleep"}
+                  </text>
+                </svg>
+                <div className="whoop-ring-label" style={{ color: sleepPct > 0 ? sleepColor : "rgba(255,255,255,.3)" }}>SLEEP</div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* ── RECOMMENDATION PILL ── */}
+        <div className="whoop-rec-pill">
+          <div className="whoop-rec-dot" style={{ background: readinessColor }} />
+          <span>{suggestion}</span>
+        </div>
+      </div>
+
+      {/* ── METRICS ROW: Fitness / Form / VO2max ── */}
+      <div className="whoop-metrics-row">
+        {[
+          { label: "FITNESS", value: hasData ? latest.ctl.toFixed(0) : "—", sub: "CTL", color: "#38bdf8" },
+          { label: "FORM",    value: hasData ? `${latest.tsb >= 0 ? "+" : ""}${latest.tsb.toFixed(0)}` : "—", sub: "TSB", color: hasData ? (latest.tsb >= 0 ? "#00d4aa" : "#f97316") : "var(--text3)" },
+          { label: "VO2MAX",  value: (() => { const hasVO2 = (parseFloat(athlete.vo2max)||0)>0||perfVO2maxDash; return hasVO2 ? resolvedVO2maxDash.value : "—"; })(), sub: "ml/kg/min", color: "var(--accent)" },
+          { label: "HRV",     value: wellnessApplied && dHRV ? `${dHRV}` : athlete.hrv || "—", sub: "ms baseline", color: "#a78bfa" },
+        ].map(m => (
+          <div key={m.label} className="whoop-metric-tile">
+            <div className="whoop-metric-val" style={{ color: m.color }}>{m.value}</div>
+            <div className="whoop-metric-lbl">{m.label}</div>
+            <div className="whoop-metric-sub">{m.sub}</div>
           </div>
-        ) : (
-          /* ── Input form ── */
+        ))}
+      </div>
+
+      {/* ── LAST ACTIVITY ── */}
+      <div className="whoop-section-label">LAST ACTIVITY</div>
+      <div className="whoop-activity-card">
+        {lastWorkout ? (
           <>
-            <div className="wellness-grid">
-
-              {/* Sleep — hours + minutes */}
-              <div className="wellness-item wellness-item--wide">
-                <div className="wellness-label"><Icon name="sleep" size={13} style={{marginRight:5}} />Sleep Duration</div>
-                <div className="wellness-input-row">
-                  <input className="wellness-input" type="number" min="0" max="14" step="1"
-                    placeholder="0" value={dSleepH}
-                    onChange={e => setDraft({ sleepH: e.target.value })} />
-                  <span className="wellness-unit">h</span>
-                  <input className="wellness-input" type="number" min="0" max="59" step="5"
-                    placeholder="0" value={dSleepM}
-                    onChange={e => setDraft({ sleepM: e.target.value })} />
-                  <span className="wellness-unit">m</span>
+            <div className="whoop-activity-top">
+              <div>
+                <div className="whoop-activity-name">{lastWorkout.name}</div>
+                <div className="whoop-activity-when">
+                  {daysSinceLast === 0 ? "Today" : daysSinceLast === 1 ? "Yesterday" : `${daysSinceLast}d ago`}
+                  {" · "}{new Date(lastWorkout.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                 </div>
               </div>
-
-              {/* Sleep quality */}
-              <div className="wellness-item">
-                <div className="wellness-label"><Icon name="star" size={13} style={{marginRight:5}} />Sleep Quality</div>
-                <div className="wellness-dots">
-                  {[1,2,3,4,5].map(v => (
-                    <button key={v} className={`wellness-dot ${dSleepQ >= v ? "active" : ""}`}
-                      style={{ "--dot-color": dSleepQ >= v ? "#38bdf8" : "var(--card-border)" }}
-                      onClick={() => setDraft({ sleepQual: dSleepQ === v ? 0 : v })} />
-                  ))}
-                </div>
-              </div>
-
-              {/* Morning HRV */}
-              <div className="wellness-item">
-                <div className="wellness-label"><Icon name="heart" size={13} style={{marginRight:5}} />Morning HRV</div>
-                <div className="wellness-input-row">
-                  <input className="wellness-input" type="number" min="0" max="200"
-                    placeholder="0" value={dHRV}
-                    onChange={e => setDraft({ hrv: e.target.value })} />
-                  <span className="wellness-unit">ms</span>
-                </div>
-              </div>
-
-              {/* Soreness */}
-              <div className="wellness-item">
-                <div className="wellness-label"><Icon name="warn" size={13} style={{marginRight:5}} />Soreness</div>
-                <div className="wellness-dots">
-                  {[1,2,3,4,5].map(v => (
-                    <button key={v} className={`wellness-dot ${dSoreness >= v ? "active" : ""}`}
-                      style={{ "--dot-color": dSoreness >= v ? "#f97316" : "var(--card-border)" }}
-                      onClick={() => setDraft({ soreness: dSoreness === v ? 0 : v })} />
-                  ))}
-                  <span className="wellness-dot-label">{dSoreness === 0 ? "" : ["","None","Mild","Mod","High","Max"][dSoreness]}</span>
-                </div>
-              </div>
-
-              {/* Energy */}
-              <div className="wellness-item">
-                <div className="wellness-label"><Icon name="power" size={13} style={{marginRight:5}} />Energy</div>
-                <div className="wellness-dots">
-                  {[1,2,3,4,5].map(v => (
-                    <button key={v} className={`wellness-dot ${dEnergy >= v ? "active" : ""}`}
-                      style={{ "--dot-color": dEnergy >= v ? "var(--accent)" : "var(--card-border)" }}
-                      onClick={() => setDraft({ energy: dEnergy === v ? 0 : v })} />
-                  ))}
-                  <span className="wellness-dot-label">{dEnergy === 0 ? "" : ["","Low","Low","OK","Good","Great"][dEnergy]}</span>
-                </div>
-              </div>
-
+              {lastWorkout.workoutType && (
+                <span className="whoop-activity-badge" style={{ "--b-color": lastWorkout.workoutType.color }}>
+                  {lastWorkout.workoutType.label}
+                </span>
+              )}
             </div>
-            <button className="wellness-submit-btn" onClick={handleSubmitWellness}>
-              <Icon name="tip" size={14} style={{marginRight:6}} />Submit & Update Readiness
-            </button>
+            <div className="whoop-activity-stats">
+              <div className="whoop-activity-stat">
+                <div className="whoop-activity-stat-val">{fmtDist(lastWorkout.distance, units)}</div>
+                <div className="whoop-activity-stat-lbl">Distance</div>
+              </div>
+              <div className="whoop-activity-stat-divider" />
+              <div className="whoop-activity-stat">
+                <div className="whoop-activity-stat-val">{fmtDuration(lastWorkout.duration)}</div>
+                <div className="whoop-activity-stat-lbl">Duration</div>
+              </div>
+              <div className="whoop-activity-stat-divider" />
+              <div className="whoop-activity-stat">
+                <div className="whoop-activity-stat-val">{fmtPaceWithUnit(lastWorkout.avgPace, units).pace}<span style={{fontSize:11,color:"var(--text3)"}}>{fmtPaceWithUnit(lastWorkout.avgPace, units).unit}</span></div>
+                <div className="whoop-activity-stat-lbl">Avg Pace</div>
+              </div>
+              <div className="whoop-activity-stat-divider" />
+              <div className="whoop-activity-stat">
+                <div className="whoop-activity-stat-val">{lastWorkout.avgHR}<span style={{fontSize:11,color:"var(--text3)"}}>bpm</span></div>
+                <div className="whoop-activity-stat-lbl">Avg HR</div>
+              </div>
+            </div>
+            {/* Strain bar */}
+            <div className="whoop-strain-bar-wrap">
+              <div className="whoop-strain-bar-label">
+                <span>Strain</span>
+                <span style={{ color: strainColor, fontWeight: 700 }}>{lastWorkout.tss} TSS</span>
+              </div>
+              <div className="whoop-strain-bar-track">
+                <div className="whoop-strain-bar-fill" style={{ width: `${Math.min(100, (lastWorkout.tss / 150) * 100)}%`, background: strainColor, boxShadow: `0 0 8px ${strainColor}66` }} />
+              </div>
+            </div>
           </>
+        ) : (
+          <div className="whoop-activity-empty">
+            <Icon name="run" size={28} color="rgba(255,255,255,.15)" />
+            <span>Import a workout to see your last activity</span>
+          </div>
         )}
       </div>
 
-      {/* ── Readiness focal card ── */}
-      <div className="card dash-readiness-card">
-        <div className="drc-label">Today's Readiness</div>
-        <div className="drc-ring-wrap">
-          <svg width="200" height="200" viewBox="0 0 200 200" style={{ overflow: "visible" }}>
-            <circle cx="100" cy="100" r={R} fill="none" stroke="var(--card-border)" strokeWidth={STROKE} />
-            {hasData && (
-              <>
-                <circle
-                  cx="100" cy="100" r={R} fill="none"
-                  stroke={readinessColor} strokeWidth={STROKE + 6}
-                  strokeDasharray={`${dash} ${circ}`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 100 100)"
-                  opacity="0.15"
-                  style={{ filter: "blur(4px)" }}
-                />
-                <circle
-                  cx="100" cy="100" r={R} fill="none"
-                  stroke={readinessColor} strokeWidth={STROKE}
-                  strokeDasharray={`${dash} ${circ}`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 100 100)"
-                  style={{ transition: "stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)" }}
-                />
-              </>
-            )}
-            <text x="100" y="88" textAnchor="middle" fill={hasData ? "var(--text1)" : "var(--text3)"} fontSize="42" fontWeight="700" fontFamily="'Barlow Condensed',sans-serif">
-              {hasData ? readinessPct : "—"}
-            </text>
-            <text x="100" y="108" textAnchor="middle" fill={hasData ? readinessColor : "var(--text3)"} fontSize="13" fontWeight="600" fontFamily="'Barlow Condensed',sans-serif" letterSpacing="1">
-              {readinessLabel.toUpperCase()}
-            </text>
-          </svg>
+      {/* ── THIS WEEK ── */}
+      <div className="whoop-section-label">THIS WEEK</div>
+      <div className="whoop-week-row">
+        <div className="whoop-week-tile">
+          <div className="whoop-week-val">{hasData ? weekDistFmt : "—"}</div>
+          <div className="whoop-week-lbl">Distance</div>
         </div>
-        <div className="drc-suggestion">{suggestion}</div>
-
-        {/* Supporting mini-stats */}
-        <div className="drc-stats">
-          <div className="drc-stat">
-            <div className="drc-stat-val" style={{ color: hasData ? "#38bdf8" : "var(--text3)" }}>{hasData ? latest.ctl.toFixed(0) : "—"}</div>
-            <div className="drc-stat-lbl">Fitness</div>
-          </div>
-          <div className="drc-stat-divider" />
-          <div className="drc-stat">
-            <div className="drc-stat-val" style={{ color: hasData ? "#f97316" : "var(--text3)" }}>{hasData ? latest.atl.toFixed(0) : "—"}</div>
-            <div className="drc-stat-lbl">Fatigue</div>
-          </div>
-          <div className="drc-stat-divider" />
-          <div className="drc-stat">
-            <div className="drc-stat-val" style={{ color: hasData ? (latest.tsb >= 0 ? "#00d4aa" : "#f97316") : "var(--text3)" }}>
-              {hasData ? `${latest.tsb >= 0 ? "+" : ""}${latest.tsb.toFixed(0)}` : "—"}
-            </div>
-            <div className="drc-stat-lbl">Form</div>
-          </div>
-          <div className="drc-stat-divider" />
-          <div className="drc-stat">
-            {(() => {
-              const hasVO2 = (parseFloat(athlete.vo2max) || 0) > 0 || perfVO2maxDash;
-              return (
-                <>
-                  <div className="drc-stat-val" style={{ color: hasVO2 ? "var(--accent)" : "var(--text3)" }}>
-                    {hasVO2
-                      ? <>{resolvedVO2maxDash.value}<span style={{ fontSize: 9, color: "var(--text3)", marginLeft: 2, fontFamily: "Inter, sans-serif", fontWeight: 400 }}>ml/kg</span></>
-                      : "—"}
-                  </div>
-                  <div className="drc-stat-lbl">VO2max</div>
-                </>
-              );
-            })()}
-          </div>
+        <div className="whoop-week-tile">
+          <div className="whoop-week-val">{uploadedWorkouts.filter(w => { const ws = new Date(today); ws.setDate(today.getDate()-today.getDay()); ws.setHours(0,0,0,0); return new Date(w.date+"T00:00:00") >= ws; }).length || "—"}</div>
+          <div className="whoop-week-lbl">Sessions</div>
+        </div>
+        <div className="whoop-week-tile">
+          <div className="whoop-week-val">{hasData ? uploadedWorkouts.filter(w => { const ws = new Date(today); ws.setDate(today.getDate()-today.getDay()); ws.setHours(0,0,0,0); return new Date(w.date+"T00:00:00") >= ws; }).reduce((s,w)=>s+(w.tss||0),0) || "—" : "—"}</div>
+          <div className="whoop-week-lbl">TSS</div>
         </div>
       </div>
 
-      {/* ── Quick stats row ── */}
-      <div className="dash-quick-row">
-        <div className="dash-quick-card">
-          <Icon name="trend" size={14} color={hasData ? "var(--accent)" : "var(--text3)"} />
-          <div className="dqc-val" style={{ color: hasData ? "var(--text1)" : "var(--text3)" }}>{hasData ? weekDistFmt : "—"}</div>
-          <div className="dqc-lbl">This week</div>
-        </div>
-        <div className="dash-quick-card">
-          <Icon name="run" size={14} color={hasData ? "#38bdf8" : "var(--text3)"} />
-          <div className="dqc-val" style={{ color: hasData ? "var(--text1)" : "var(--text3)" }}>{uploadedWorkouts.length || "—"}</div>
-          <div className="dqc-lbl">Activities</div>
-        </div>
-        <div className="dash-quick-card">
-          <Icon name="clock" size={14} color={hasData ? "#f97316" : "var(--text3)"} />
-          <div className="dqc-val" style={{ color: hasData ? "var(--text1)" : "var(--text3)" }}>{daysSinceLast !== null ? `${daysSinceLast}d` : "—"}</div>
-          <div className="dqc-lbl">Since last run</div>
-        </div>
+      {/* ── DAILY LOG CARD ── */}
+      <div className="whoop-section-label">
+        DAILY LOG
+        {submitted && wellnessApplied && <span className="whoop-log-check">✓ Applied</span>}
       </div>
-
-      {/* ── Last workout ── */}
-      <div className="card dash-last-workout">
-        <div className="dlw-header">
-          <span className="dlw-label">Last Activity</span>
-          {lastWorkout && <span className="dlw-date">{new Date(lastWorkout.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>}
-        </div>
-        {lastWorkout ? (
+      <div className="whoop-log-card">
+        {submitted ? (
           <>
-            <div className="dlw-name">{lastWorkout.name}</div>
-            <div className="dlw-stats">
-              <span>{fmtDist(lastWorkout.distance, units)}</span>
-              <span className="dlw-dot">·</span>
-              <span>{fmtDuration(lastWorkout.duration)}</span>
-              <span className="dlw-dot">·</span>
-              <span>{fmtPaceWithUnit(lastWorkout.avgPace, units).pace}{fmtPaceWithUnit(lastWorkout.avgPace, units).unit}</span>
+            <div className="whoop-log-submitted">
+              {[
+                { label: "Sleep", value: `${draft.sleepH||0}h ${draft.sleepM||0}m`, color: sleepColor },
+                { label: "Quality", value: dSleepQ > 0 ? `${dSleepQ}/5` : "—", color: "#a78bfa" },
+                { label: "HRV", value: draft.hrv ? `${draft.hrv} ms` : "—", color: "#a78bfa" },
+                { label: "Soreness", value: dSoreness > 0 ? ["","None","Mild","Moderate","High","Severe"][dSoreness] : "—", color: dSoreness >= 4 ? "#ef4444" : dSoreness >= 3 ? "#f97316" : "#34d399" },
+                { label: "Energy", value: dEnergy > 0 ? ["","Exhausted","Low","OK","Good","Great"][dEnergy] : "—", color: dEnergy >= 4 ? "#34d399" : dEnergy >= 3 ? "#e8ff47" : "#f97316" },
+              ].map(item => (
+                <div key={item.label} className="whoop-log-row">
+                  <span className="whoop-log-key">{item.label}</span>
+                  <span className="whoop-log-val" style={{ color: item.color }}>{item.value}</span>
+                </div>
+              ))}
             </div>
+            <button className="whoop-log-edit-btn" onClick={handleEditWellness}>Edit Log</button>
           </>
         ) : (
-          <div className="dlw-empty">Import a workout to see your last activity here</div>
+          <>
+            <div className="whoop-log-form">
+              {/* Sleep row */}
+              <div className="whoop-log-field">
+                <div className="whoop-log-field-label"><Icon name="sleep" size={12} style={{marginRight:5}} />Sleep</div>
+                <div className="whoop-log-field-inputs">
+                  <input className="whoop-input" type="number" min="0" max="14" placeholder="0" value={dSleepH} onChange={e => setDraft({ sleepH: e.target.value })} /><span className="whoop-unit">h</span>
+                  <input className="whoop-input" type="number" min="0" max="59" step="5" placeholder="0" value={dSleepM} onChange={e => setDraft({ sleepM: e.target.value })} /><span className="whoop-unit">m</span>
+                </div>
+              </div>
+              {/* HRV */}
+              <div className="whoop-log-field">
+                <div className="whoop-log-field-label"><Icon name="heart" size={12} style={{marginRight:5}} />HRV</div>
+                <div className="whoop-log-field-inputs">
+                  <input className="whoop-input" type="number" min="0" max="200" placeholder="—" value={dHRV} onChange={e => setDraft({ hrv: e.target.value })} /><span className="whoop-unit">ms</span>
+                </div>
+              </div>
+              {/* Soreness dots */}
+              <div className="whoop-log-field">
+                <div className="whoop-log-field-label"><Icon name="warn" size={12} style={{marginRight:5}} />Soreness</div>
+                <div className="whoop-dots-row">
+                  {["None","Mild","Mod","High","Max"].map((lbl,v) => (
+                    <button key={v} className={`whoop-dot-btn ${dSoreness === v+1 ? "active" : ""}`}
+                      style={{ "--dot-active": "#f97316" }}
+                      onClick={() => setDraft({ soreness: dSoreness === v+1 ? 0 : v+1 })}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Energy dots */}
+              <div className="whoop-log-field">
+                <div className="whoop-log-field-label"><Icon name="power" size={12} style={{marginRight:5}} />Energy</div>
+                <div className="whoop-dots-row">
+                  {["Low","Low","OK","Good","Great"].map((lbl,v) => (
+                    <button key={v} className={`whoop-dot-btn ${dEnergy === v+1 ? "active" : ""}`}
+                      style={{ "--dot-active": "var(--accent)" }}
+                      onClick={() => setDraft({ energy: dEnergy === v+1 ? 0 : v+1 })}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Sleep quality */}
+              <div className="whoop-log-field">
+                <div className="whoop-log-field-label"><Icon name="star" size={12} style={{marginRight:5}} />Sleep Quality</div>
+                <div className="whoop-dots-row">
+                  {[1,2,3,4,5].map(v => (
+                    <button key={v} className={`whoop-dot-btn ${dSleepQ >= v ? "active" : ""}`}
+                      style={{ "--dot-active": "#38bdf8" }}
+                      onClick={() => setDraft({ sleepQual: dSleepQ === v ? 0 : v })}>
+                      {v}★
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <button className="whoop-log-submit-btn" onClick={handleSubmitWellness}>
+              Update Readiness
+            </button>
+          </>
         )}
       </div>
 
@@ -928,6 +992,78 @@ const generateLapsFromStream = (stream, splitDistKm = 1.0) => {
   return laps;
 };
 
+
+// ─── LAP SEGMENT CLASSIFIER ──────────────────────────────────────────────────
+// Labels each lap as "warmup", "working", or "cooldown" by looking at pace
+// and HR patterns across the full lap set.
+//
+// Algorithm:
+//   1. Compute median pace of all laps (ignoring nulls).
+//   2. Laps at the START that are ≥ threshold% slower than median = warmup.
+//   3. Laps at the END that are ≥ threshold% slower than median = cooldown.
+//   4. Everything in between = working.
+//   If the set is too short or variance too low, everything is "working".
+const classifyLapSegments = (laps) => {
+  if (!laps || laps.length < 3) return laps.map(l => ({ ...l, segment: "working" }));
+
+  const paces = laps.map(l => l.paceSec).filter(p => p != null && p > 0);
+  if (paces.length < 3) return laps.map(l => ({ ...l, segment: "working" }));
+
+  // Median pace
+  const sorted = [...paces].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+
+  // Threshold: a lap is "slow" (warmup/cooldown candidate) if it's > 8% slower than median
+  const SLOW_THRESHOLD = 1.08;
+  // Also require at least 5% pace variance across laps to bother classifying
+  const minPace = sorted[0], maxPace = sorted[sorted.length - 1];
+  if (maxPace / minPace < 1.05) return laps.map(l => ({ ...l, segment: "working" }));
+
+  const isSlow = (lap) => !lap.paceSec || lap.paceSec > median * SLOW_THRESHOLD;
+
+  // Walk from front for warmup
+  let warmupEnd = 0;
+  while (warmupEnd < laps.length - 1 && isSlow(laps[warmupEnd])) warmupEnd++;
+  // Never label more than first 30% of laps as warmup
+  warmupEnd = Math.min(warmupEnd, Math.floor(laps.length * 0.30));
+
+  // Walk from back for cooldown
+  let cooldownStart = laps.length - 1;
+  while (cooldownStart > warmupEnd && isSlow(laps[cooldownStart])) cooldownStart--;
+  cooldownStart++;
+  // Never label more than last 30% of laps as cooldown
+  cooldownStart = Math.max(cooldownStart, Math.ceil(laps.length * 0.70));
+
+  // If warmup and cooldown would overlap or leave no working laps, collapse
+  if (warmupEnd >= cooldownStart) {
+    return laps.map(l => ({ ...l, segment: "working" }));
+  }
+
+  return laps.map((l, i) => ({
+    ...l,
+    segment: i < warmupEnd ? "warmup"
+            : i >= cooldownStart ? "cooldown"
+            : "working",
+  }));
+};
+
+// ─── LAP SEGMENT SUMMARY ─────────────────────────────────────────────────────
+// Computes avg pace, avg HR, total distance for a group of laps
+const lapGroupStats = (laps) => {
+  const validPaces = laps.filter(l => l.paceSec);
+  const validHR    = laps.filter(l => l.avgHR);
+  const totalDist  = laps.reduce((s, l) => s + (l.distKm || 0), 0);
+  const totalSec   = laps.reduce((s, l) => s + (l.durationSec || 0), 0);
+  // Weighted avg pace (by distance) for accuracy
+  const wPace = validPaces.length
+    ? Math.round(validPaces.reduce((s, l) => s + l.paceSec * (l.distKm || 1), 0)
+        / validPaces.reduce((s, l) => s + (l.distKm || 1), 0))
+    : null;
+  const avgHR = validHR.length
+    ? Math.round(validHR.reduce((s, l) => s + l.avgHR, 0) / validHR.length)
+    : null;
+  return { avgPace: wPace, avgHR, totalDist, totalSec, count: laps.length };
+};
 
 // Implements just enough of the FIT protocol to extract activity records:
 // header → definition messages → data messages → record fields (HR, speed,
@@ -1249,10 +1385,11 @@ const parseFIT = async (arrayBuffer, fileName = "", athleteMaxHR = 190, customZo
   const tss = Math.round((durationMin / 60) * 65);
   const workoutType = classifyWorkout({ hrZones, avgPace, durationMin, avgHR, maxHR });
 
-  // Use real lap records from FIT; fall back to 1km stream splits
-  const laps = lapRecords.length > 0
+  // Use real lap records from FIT; fall back to 1km stream splits — then classify segments
+  const rawLaps = lapRecords.length > 0
     ? lapRecords.map((l, i) => ({ lap: i + 1, ...l }))
     : generateLapsFromStream(sampledStream, 1.0);
+  const laps = classifyLapSegments(rawLaps);
 
   // Generate rich coach insights from the parsed data
   const dominantZone = hrZones.indexOf(Math.max(...hrZones));
@@ -1442,7 +1579,7 @@ const parseGPX = (xmlText, athleteMaxHR = 190, customZones = null, athleteRestin
     type: "Run",
     device: gpxDevice,
     workoutType: classifyWorkout({ hrZones, avgPace, durationMin, avgHR, maxHR }),
-    laps: generateLapsFromStream(sampledStream, 1.0),
+    laps: classifyLapSegments(generateLapsFromStream(sampledStream, 1.0)),
     duration: Math.round(durationMin),
     distance: parseFloat(totalKm.toFixed(2)),
     tss,
@@ -1513,7 +1650,7 @@ const parseCSV = (text) => {
       date: date.replace(/^"/, "").replace(/"$/, "").split("T")[0],
       type: "Run",
       workoutType: classifyWorkout({ hrZones: csvHrZones, avgPace, durationMin, avgHR, maxHR: avgHR + 15 }),
-      laps: generateLapsFromStream(stream, 1.0),
+      laps: classifyLapSegments(generateLapsFromStream(stream, 1.0)),
       duration: Math.round(durationMin),
       distance: parseFloat(km.toFixed(2)),
       tss: csvTss,
@@ -1570,7 +1707,7 @@ const parseCSV = (text) => {
     date: new Date().toISOString().split("T")[0],
     type: "Run",
     workoutType: classifyWorkout({ hrZones: multiCsvHrZones, avgPace, durationMin, avgHR, maxHR: avgHR + 15 }),
-    laps: generateLapsFromStream(sampled, 1.0),
+    laps: classifyLapSegments(generateLapsFromStream(sampled, 1.0)),
     duration: Math.round(durationMin),
     distance: parseFloat(totalKm.toFixed(2)),
     tss: multiCsvTss,
@@ -2208,6 +2345,9 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
             <ReferenceLine yAxisId="hr" y={rm.lthr} stroke="#ef444460" strokeDasharray="4 4" label={{ value: "LTHR", fill: "#ef4444", fontSize: 10 }} />
           </ComposedChart>
         </ResponsiveContainer>
+        {workout.coachNotes.filter(n => ["pacing","cardiac"].includes(n.category)).map((note, i) => (
+          <CoachInsight key={i} note={note} />
+        ))}
       </div>
 
       {/* Power + Cadence */}
@@ -2229,6 +2369,9 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
             <ReferenceLine y={rm.ftp} stroke="rgba(232,255,71,.38)" strokeDasharray="4 4" label={{ value: "FTP", fill: "var(--accent)", fontSize: 10 }} />
           </AreaChart>
         </ResponsiveContainer>
+        {workout.coachNotes.filter(n => n.category === "power").map((note, i) => (
+          <CoachInsight key={i} note={note} />
+        ))}
       </div>
 
       {/* Cadence */}
@@ -2258,6 +2401,9 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
               ? "Good cadence. Aim for 170–180 spm to reduce injury risk."
               : "Cadence below optimal. Gradually increase toward 170 spm with short, quick steps."}
           </p>
+          {workout.coachNotes.filter(n => n.category === "technique").map((note, i) => (
+            <CoachInsight key={i} note={note} />
+          ))}
         </div>
       )}
 
@@ -2291,56 +2437,189 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
             <Area type="monotone" dataKey="elev" stroke="#34d399" fill="#34d39920" strokeWidth={2} name="Elevation" dot={false} />
           </AreaChart>
         </ResponsiveContainer>
+        {workout.coachNotes.filter(n => n.category === "performance").map((note, i) => (
+          <CoachInsight key={i} note={note} />
+        ))}
       </div>
 
       {/* Lap Times */}
-      {workout.laps && workout.laps.length > 0 && (
-        <div className="card full-width">
-          <h3>Lap Times</h3>
-          <p className="card-sub">
-            {workout.laps.length} lap{workout.laps.length !== 1 ? "s" : ""}
-            {workout.source === "fit" && workout.laps[0]?.distKm
-              ? ` · from device`
-              : ` · 1 km splits`}
-          </p>
-          <div className="lap-table">
-            <div className="lap-header" style={workout.laps.some(l => l.avgCadence) ? { gridTemplateColumns: "36px 90px 72px 90px 72px 72px" } : {}}>
-              <span className="lap-col lap-num">#</span>
-              <span className="lap-col lap-dist">Distance</span>
-              <span className="lap-col lap-time">Time</span>
-              <span className="lap-col lap-pace">Pace</span>
-              <span className="lap-col lap-hr">Avg HR</span>
-              {workout.laps.some(l => l.avgCadence) && <span className="lap-col lap-cad">Cadence</span>}
-            </div>
-            {workout.laps.map((lap, i) => {
-              const lapDist = lap.distKm != null
-                ? (units.distance === "mi" ? `${(lap.distKm * 0.621371).toFixed(2)} mi` : `${lap.distKm.toFixed(2)} km`)
-                : "—";
-              const lapTime = lap.durationSec != null
-                ? `${Math.floor(lap.durationSec / 60)}:${String(lap.durationSec % 60).padStart(2, "0")}`
-                : "—";
-              const { pace: lapPaceFmt } = lap.paceSec ? fmtPaceWithUnit(lap.paceSec, units) : { pace: "—" };
-              const isfast = i > 0 && lap.paceSec && workout.laps[i-1]?.paceSec && lap.paceSec < workout.laps[i-1].paceSec;
-              const isslow = i > 0 && lap.paceSec && workout.laps[i-1]?.paceSec && lap.paceSec > workout.laps[i-1].paceSec;
-              const showCadCol = workout.laps.some(l => l.avgCadence);
-              return (
-                <div key={i} className={`lap-row ${i % 2 === 0 ? "lap-even" : ""}`} style={ showCadCol ? { gridTemplateColumns: "36px 90px 72px 90px 72px 72px" } : {}}>
-                  <span className="lap-col lap-num">{lap.lap ?? i + 1}</span>
-                  <span className="lap-col lap-dist">{lapDist}</span>
-                  <span className="lap-col lap-time">{lapTime}</span>
-                  <span className="lap-col lap-pace" style={{ color: isfast ? "#34d399" : isslow ? "#f97316" : "var(--text1)" }}>
-                    {lapPaceFmt}{lap.paceSec ? `${paceUnit}` : ""}
-                    {isfast && <span className="lap-delta">▲</span>}
-                    {isslow && <span className="lap-delta lap-slow">▼</span>}
+      {workout.laps && workout.laps.length > 0 && (() => {
+        const hasSegments = workout.laps.some(l => l.segment && l.segment !== "working");
+        const showCadCol  = workout.laps.some(l => l.avgCadence);
+        const colStyle    = showCadCol
+          ? { gridTemplateColumns: "36px 90px 72px 90px 72px 72px" }
+          : {};
+
+        // Group laps by segment in order, preserving run
+        const SEGMENT_META = {
+          warmup:   { label: "Warm-Up",    color: "#38bdf8", icon: "walk"  },
+          working:  { label: "Working",    color: "var(--accent)", icon: "power" },
+          cooldown: { label: "Cool-Down",  color: "#34d399", icon: "easy"  },
+        };
+
+        // Build ordered segment groups  
+        const groups = [];
+        let currentSeg = null;
+        workout.laps.forEach((lap, i) => {
+          const seg = lap.segment || "working";
+          if (seg !== currentSeg) {
+            groups.push({ segment: seg, laps: [] });
+            currentSeg = seg;
+          }
+          groups[groups.length - 1].laps.push({ ...lap, _idx: i });
+        });
+
+        const renderLapRow = (lap, i, groupLaps) => {
+          const lapDist = lap.distKm != null
+            ? (units.distance === "mi" ? `${(lap.distKm * 0.621371).toFixed(2)} mi` : `${lap.distKm.toFixed(2)} km`)
+            : "—";
+          const lapTime = lap.durationSec != null
+            ? `${Math.floor(lap.durationSec / 60)}:${String(lap.durationSec % 60).padStart(2, "0")}`
+            : "—";
+          const { pace: lapPaceFmt } = lap.paceSec ? fmtPaceWithUnit(lap.paceSec, units) : { pace: "—" };
+
+          // Compare to previous lap within the same group for delta arrows
+          const prevLap = groupLaps[i - 1];
+          const isfast = i > 0 && prevLap?.paceSec && lap.paceSec && lap.paceSec < prevLap.paceSec;
+          const isslow = i > 0 && prevLap?.paceSec && lap.paceSec && lap.paceSec > prevLap.paceSec;
+
+          // Compare this lap's pace to the working group median to show deviation
+          const workingPaces = workout.laps.filter(l => (l.segment || "working") === "working" && l.paceSec).map(l => l.paceSec);
+          const workingMedian = workingPaces.length
+            ? workingPaces.sort((a,b)=>a-b)[Math.floor(workingPaces.length/2)]
+            : null;
+          const pctVsWorking = workingMedian && lap.paceSec && (lap.segment || "working") !== "working"
+            ? Math.round(((lap.paceSec - workingMedian) / workingMedian) * 100)
+            : null;
+
+          return (
+            <div key={lap._idx ?? i} className={`lap-row ${i % 2 === 0 ? "lap-even" : ""}`} style={colStyle}>
+              <span className="lap-col lap-num">{lap.lap ?? (lap._idx ?? i) + 1}</span>
+              <span className="lap-col lap-dist">{lapDist}</span>
+              <span className="lap-col lap-time">{lapTime}</span>
+              <span className="lap-col lap-pace" style={{ color: isfast ? "#34d399" : isslow ? "#f97316" : "var(--text1)" }}>
+                {lapPaceFmt}{lap.paceSec ? paceUnit : ""}
+                {isfast && <span className="lap-delta">▲</span>}
+                {isslow && <span className="lap-delta lap-slow">▼</span>}
+                {pctVsWorking !== null && (
+                  <span style={{ fontSize: 10, marginLeft: 5, color: pctVsWorking > 0 ? "#64748b" : "#64748b", opacity: 0.7 }}>
+                    {pctVsWorking > 0 ? `+${pctVsWorking}%` : `${pctVsWorking}%`}
                   </span>
-                  <span className="lap-col lap-hr">{lap.avgHR ? `${lap.avgHR} bpm` : "—"}</span>
-                  {showCadCol && <span className="lap-col lap-cad">{lap.avgCadence ? `${lap.avgCadence} spm` : "—"}</span>}
+                )}
+              </span>
+              <span className="lap-col lap-hr">{lap.avgHR ? `${lap.avgHR} bpm` : "—"}</span>
+              {showCadCol && <span className="lap-col lap-cad">{lap.avgCadence ? `${lap.avgCadence} spm` : "—"}</span>}
+            </div>
+          );
+        };
+
+        return (
+          <div className="card full-width">
+            <h3>Lap Analysis</h3>
+            <p className="card-sub">
+              {workout.laps.length} lap{workout.laps.length !== 1 ? "s" : ""}
+              {workout.source === "fit" && workout.laps[0]?.distKm ? " · from device" : " · 1 km splits"}
+              {hasSegments && " · warm-up / working / cool-down detected"}
+            </p>
+
+            {/* Segment summary pills — only shown when segments exist */}
+            {hasSegments && (() => {
+              const segs = ["warmup", "working", "cooldown"];
+              return (
+                <div className="lap-segment-summary">
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                    {segs.map(seg => {
+                      const segLaps = workout.laps.filter(l => (l.segment || "working") === seg);
+                      if (!segLaps.length) return <div key={seg} />;
+                      const stats = lapGroupStats(segLaps);
+                      const meta  = SEGMENT_META[seg];
+                      const { pace: segPaceFmt, unit: segPaceUnit } = stats.avgPace ? fmtPaceWithUnit(stats.avgPace, units) : { pace: "—", unit: "" };
+                      const segDist = units.distance === "mi"
+                        ? `${(stats.totalDist * 0.621371).toFixed(2)} mi`
+                        : `${stats.totalDist.toFixed(2)} km`;
+                      return (
+                        <div key={seg} className="lss-card" style={{ "--seg-color": meta.color }}>
+                          <div className="lss-header">
+                            <Icon name={meta.icon} size={13} color={meta.color} />
+                            <span className="lss-label" style={{ color: meta.color }}>{meta.label}</span>
+                            <span className="lss-count">{stats.count} lap{stats.count !== 1 ? "s" : ""}</span>
+                          </div>
+                          <div className="lss-pace">{segPaceFmt}<span className="lss-unit">{segPaceUnit}</span></div>
+                          <div className="lss-meta">
+                            {segDist}
+                            {stats.avgHR && <> · {stats.avgHR} bpm</>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {(() => {
+                    const workingLaps  = workout.laps.filter(l => (l.segment||"working") === "working");
+                    const warmupLaps   = workout.laps.filter(l => l.segment === "warmup");
+                    const cooldownLaps = workout.laps.filter(l => l.segment === "cooldown");
+                    const wStats  = lapGroupStats(workingLaps);
+                    const wuStats = lapGroupStats(warmupLaps);
+                    const cdStats = lapGroupStats(cooldownLaps);
+                    if (!wStats.avgPace) return null;
+                    const wuDelta = wuStats.avgPace ? wuStats.avgPace - wStats.avgPace : null;
+                    const cdDelta = cdStats.avgPace ? cdStats.avgPace - wStats.avgPace : null;
+                    if (!wuDelta && !cdDelta) return null;
+                    return (
+                      <div className="lss-delta-row">
+                        <span className="lss-delta-label">vs. working pace</span>
+                        {wuDelta !== null && (
+                          <span className="lss-delta-chip" style={{ color: "#38bdf8" }}>
+                            Warm-up +{fmtPace(Math.abs(wuDelta))} slower
+                          </span>
+                        )}
+                        {cdDelta !== null && (
+                          <span className="lss-delta-chip" style={{ color: "#34d399" }}>
+                            Cool-down +{fmtPace(Math.abs(cdDelta))} slower
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
-            })}
+            })()}
+
+            {/* Lap table — grouped by segment */}
+            <div className="lap-table" style={{ marginTop: hasSegments ? 20 : 12 }}>
+              <div className="lap-header" style={colStyle}>
+                <span className="lap-col lap-num">#</span>
+                <span className="lap-col lap-dist">Distance</span>
+                <span className="lap-col lap-time">Time</span>
+                <span className="lap-col lap-pace">Pace</span>
+                <span className="lap-col lap-hr">Avg HR</span>
+                {showCadCol && <span className="lap-col lap-cad">Cadence</span>}
+              </div>
+
+              {hasSegments ? groups.map((group, gi) => {
+                const meta = SEGMENT_META[group.segment];
+                const stats = lapGroupStats(group.laps);
+                const { pace: gPaceFmt, unit: gPaceUnit } = stats.avgPace ? fmtPaceWithUnit(stats.avgPace, units) : { pace: "—", unit: "" };
+                return (
+                  <div key={gi} className="lap-segment-group">
+                    <div className="lap-segment-divider" style={{ "--seg-color": meta.color }}>
+                      <span className="lsd-label" style={{ color: meta.color }}>
+                        <Icon name={meta.icon} size={11} style={{ marginRight: 4 }} />
+                        {meta.label}
+                      </span>
+                      <span className="lsd-stats">
+                        avg {gPaceFmt}{gPaceUnit}
+                        {stats.avgHR ? ` · ${stats.avgHR} bpm` : ""}
+                        {" · "}{group.laps.length} lap{group.laps.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    {group.laps.map((lap, i) => renderLapRow(lap, i, group.laps))}
+                  </div>
+                );
+              }) : workout.laps.map((lap, i) => renderLapRow(lap, i, workout.laps))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Route Map */}
       {workout.gpsTrack && (
@@ -2351,16 +2630,18 @@ const WorkoutDetailView = ({ workout, onBack, customZones, units, athlete, resol
         </div>
       )}
 
-      {/* Coach Insights */}
-      <div className="card full-width">
-        <h3>AI Coach Insights</h3>
-        <p className="card-sub">Automated performance analysis</p>
-        <div className="coach-list">
-          {workout.coachNotes.map((note, i) => (
-            <CoachInsight key={i} note={note} />
-          ))}
+      {/* Recovery + load notes — shown after laps/map as a summary */}
+      {workout.coachNotes.filter(n => ["recovery","load","warning"].includes(n.category)).length > 0 && (
+        <div className="card full-width">
+          <h3>Recovery & Load</h3>
+          <p className="card-sub">Session stress and recommended recovery</p>
+          <div className="coach-list">
+            {workout.coachNotes.filter(n => ["recovery","load","warning"].includes(n.category)).map((note, i) => (
+              <CoachInsight key={i} note={note} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -4670,6 +4951,19 @@ function App() {
         
         /* COACH */
         .coach-list { display: flex; flex-direction: column; gap: 12px; }
+        /* When coach insights sit directly inside a chart card, add top separator */
+        .chart-card .coach-insight,
+        .card .coach-insight:first-of-type {
+          margin-top: 16px;
+          border-top: 1px solid var(--card-border);
+          padding-top: 14px;
+        }
+        .chart-card .coach-insight + .coach-insight,
+        .card .coach-insight + .coach-insight {
+          margin-top: 0;
+          border-top: none;
+          padding-top: 0;
+        }
         .coach-insight {
           display: flex;
           align-items: flex-start;
@@ -5117,6 +5411,338 @@ function App() {
 
         /* Selected day workout list */
         .cal-workout-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+        /* ── WHOOP-STYLE DASHBOARD ──────────────────────────────── */
+        .whoop-dash {
+          display: flex; flex-direction: column; gap: 0;
+          padding-bottom: 24px;
+        }
+
+        /* Hero section — full bleed dark */
+        .whoop-hero {
+          background: #0a0a0c;
+          border-radius: 20px;
+          padding: 22px 20px 24px;
+          margin-bottom: 12px;
+          border: 1px solid rgba(255,255,255,.06);
+          position: relative;
+          overflow: hidden;
+        }
+        .whoop-hero::before {
+          content: "";
+          position: absolute; inset: 0;
+          background: radial-gradient(ellipse at 50% -10%, rgba(232,255,71,.06) 0%, transparent 65%);
+          pointer-events: none;
+        }
+
+        .whoop-hero-top {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          margin-bottom: 24px;
+        }
+        .whoop-hello {
+          font-size: 12px; color: rgba(255,255,255,.4); font-weight: 500;
+          text-transform: uppercase; letter-spacing: 1.5px;
+        }
+        .whoop-name {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 34px; font-weight: 800; color: #fff;
+          letter-spacing: -0.5px; line-height: 1.05; margin-top: 2px;
+        }
+        .whoop-date-pill {
+          font-size: 11px; color: rgba(255,255,255,.35);
+          background: rgba(255,255,255,.06);
+          border: 1px solid rgba(255,255,255,.08);
+          border-radius: 20px; padding: 4px 10px;
+          white-space: nowrap; margin-top: 4px;
+        }
+
+        /* Three rings */
+        .whoop-rings {
+          display: flex; align-items: center; justify-content: center;
+          gap: 8px; margin-bottom: 20px;
+        }
+        .whoop-ring-block {
+          display: flex; flex-direction: column; align-items: center; gap: 6px;
+        }
+        .whoop-ring-block--hero {
+          margin: 0 4px;
+        }
+        .whoop-ring-label {
+          font-size: 9px; font-weight: 800; letter-spacing: 2px;
+          text-transform: uppercase;
+        }
+
+        /* Recommendation pill */
+        .whoop-rec-pill {
+          display: flex; align-items: center; gap: 8px;
+          background: rgba(255,255,255,.05);
+          border: 1px solid rgba(255,255,255,.08);
+          border-radius: 12px; padding: 10px 14px;
+        }
+        .whoop-rec-dot {
+          width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
+        .whoop-rec-pill span {
+          font-size: 12px; color: rgba(255,255,255,.65); line-height: 1.4;
+        }
+
+        /* Metrics row */
+        .whoop-metrics-row {
+          display: grid; grid-template-columns: repeat(4, 1fr);
+          gap: 8px; margin-bottom: 12px;
+        }
+        .whoop-metric-tile {
+          background: #111115;
+          border: 1px solid rgba(255,255,255,.07);
+          border-radius: 14px; padding: 14px 10px;
+          display: flex; flex-direction: column; align-items: center;
+          text-align: center; gap: 3px;
+        }
+        .whoop-metric-val {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 26px; font-weight: 800; line-height: 1;
+        }
+        .whoop-metric-lbl {
+          font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
+          text-transform: uppercase; color: rgba(255,255,255,.35);
+          margin-top: 2px;
+        }
+        .whoop-metric-sub {
+          font-size: 9px; color: rgba(255,255,255,.2);
+        }
+
+        /* Section label */
+        .whoop-section-label {
+          font-size: 9px; font-weight: 800; letter-spacing: 2px;
+          text-transform: uppercase; color: rgba(255,255,255,.3);
+          padding: 0 2px; margin-bottom: 8px; margin-top: 4px;
+          display: flex; align-items: center; gap: 8px;
+        }
+        .whoop-log-check {
+          font-size: 9px; color: #00d4aa; font-weight: 700;
+          letter-spacing: 1px;
+        }
+
+        /* Activity card */
+        .whoop-activity-card {
+          background: #111115;
+          border: 1px solid rgba(255,255,255,.08);
+          border-radius: 18px; padding: 18px 16px;
+          margin-bottom: 16px;
+        }
+        .whoop-activity-top {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          margin-bottom: 16px; gap: 8px;
+        }
+        .whoop-activity-name {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 20px; font-weight: 700; color: #fff; line-height: 1.1;
+        }
+        .whoop-activity-when {
+          font-size: 11px; color: rgba(255,255,255,.35); margin-top: 3px;
+        }
+        .whoop-activity-badge {
+          font-size: 10px; font-weight: 700; letter-spacing: .04em;
+          color: var(--b-color, #e8ff47);
+          border: 1px solid color-mix(in srgb, var(--b-color, #e8ff47) 35%, transparent);
+          background: color-mix(in srgb, var(--b-color, #e8ff47) 10%, transparent);
+          border-radius: 20px; padding: 3px 10px; white-space: nowrap; flex-shrink: 0;
+        }
+        .whoop-activity-stats {
+          display: flex; align-items: center;
+          background: rgba(255,255,255,.04);
+          border-radius: 12px; padding: 12px 8px;
+          gap: 0; margin-bottom: 14px;
+        }
+        .whoop-activity-stat {
+          flex: 1; display: flex; flex-direction: column;
+          align-items: center; gap: 4px; text-align: center;
+        }
+        .whoop-activity-stat-val {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 18px; font-weight: 700; color: #fff; line-height: 1;
+        }
+        .whoop-activity-stat-lbl {
+          font-size: 9px; color: rgba(255,255,255,.3);
+          text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+        }
+        .whoop-activity-stat-divider {
+          width: 1px; height: 28px; background: rgba(255,255,255,.08); flex-shrink: 0;
+        }
+        .whoop-strain-bar-wrap { }
+        .whoop-strain-bar-label {
+          display: flex; justify-content: space-between; align-items: center;
+          font-size: 10px; color: rgba(255,255,255,.35);
+          text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+          margin-bottom: 6px;
+        }
+        .whoop-strain-bar-track {
+          height: 5px; background: rgba(255,255,255,.08);
+          border-radius: 3px; overflow: hidden;
+        }
+        .whoop-strain-bar-fill {
+          height: 100%; border-radius: 3px;
+          transition: width 1s cubic-bezier(.4,0,.2,1);
+        }
+        .whoop-activity-empty {
+          display: flex; flex-direction: column; align-items: center;
+          gap: 10px; padding: 24px 0; color: rgba(255,255,255,.2); font-size: 12px;
+        }
+
+        /* Week tiles */
+        .whoop-week-row {
+          display: grid; grid-template-columns: repeat(3, 1fr);
+          gap: 8px; margin-bottom: 16px;
+        }
+        .whoop-week-tile {
+          background: #111115;
+          border: 1px solid rgba(255,255,255,.07);
+          border-radius: 14px; padding: 16px 10px;
+          display: flex; flex-direction: column; align-items: center;
+          gap: 5px; text-align: center;
+        }
+        .whoop-week-val {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 26px; font-weight: 800; color: #fff; line-height: 1;
+        }
+        .whoop-week-lbl {
+          font-size: 9px; color: rgba(255,255,255,.3);
+          text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700;
+        }
+
+        /* Daily log card */
+        .whoop-log-card {
+          background: #111115;
+          border: 1px solid rgba(255,255,255,.08);
+          border-radius: 18px; padding: 18px 16px;
+          margin-bottom: 8px;
+        }
+        .whoop-log-submitted {
+          display: flex; flex-direction: column; gap: 0;
+        }
+        .whoop-log-row {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.05);
+          font-size: 13px;
+        }
+        .whoop-log-row:last-child { border-bottom: none; }
+        .whoop-log-key { color: rgba(255,255,255,.4); font-weight: 500; }
+        .whoop-log-val { font-weight: 700; font-family: 'Barlow Condensed', sans-serif; font-size: 15px; }
+        .whoop-log-edit-btn {
+          width: 100%; margin-top: 14px; padding: 11px;
+          border-radius: 10px; border: 1px solid rgba(255,255,255,.12);
+          background: transparent; color: rgba(255,255,255,.5);
+          font-size: 12px; font-weight: 700; letter-spacing: .06em;
+          text-transform: uppercase; cursor: pointer; font-family: 'Inter', sans-serif;
+          transition: border-color .15s, color .15s;
+        }
+        .whoop-log-edit-btn:hover { border-color: rgba(255,255,255,.3); color: #fff; }
+
+        /* Log form */
+        .whoop-log-form { display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
+        .whoop-log-field { display: flex; flex-direction: column; gap: 7px; }
+        .whoop-log-field-label {
+          font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+          text-transform: uppercase; color: rgba(255,255,255,.35);
+          display: flex; align-items: center;
+        }
+        .whoop-log-field-inputs { display: flex; align-items: center; gap: 6px; }
+        .whoop-input {
+          width: 64px; padding: 8px 10px;
+          border-radius: 8px; border: 1px solid rgba(255,255,255,.1);
+          background: rgba(255,255,255,.05); color: #fff;
+          font-size: 18px; font-family: 'Barlow Condensed', sans-serif;
+          font-weight: 700; text-align: center; outline: none;
+        }
+        .whoop-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232,255,71,.1); }
+        .whoop-unit { font-size: 12px; color: rgba(255,255,255,.3); }
+
+        /* Dot/label buttons */
+        .whoop-dots-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .whoop-dot-btn {
+          padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+          border: 1px solid rgba(255,255,255,.12); background: transparent;
+          color: rgba(255,255,255,.4); cursor: pointer; letter-spacing: .02em;
+          transition: background .12s, color .12s, border-color .12s;
+        }
+        .whoop-dot-btn:hover { color: #fff; border-color: rgba(255,255,255,.3); }
+        .whoop-dot-btn.active {
+          background: color-mix(in srgb, var(--dot-active) 18%, transparent);
+          color: var(--dot-active);
+          border-color: color-mix(in srgb, var(--dot-active) 45%, transparent);
+        }
+
+        /* Submit button */
+        .whoop-log-submit-btn {
+          width: 100%; padding: 14px;
+          border-radius: 12px; border: none; cursor: pointer;
+          background: var(--accent); color: #0a0a0c;
+          font-size: 13px; font-weight: 800; letter-spacing: .08em;
+          text-transform: uppercase; font-family: 'Inter', sans-serif;
+          transition: opacity .15s; box-shadow: 0 4px 20px rgba(232,255,71,.25);
+        }
+        .whoop-log-submit-btn:hover { opacity: 0.88; }
+        .lap-segment-summary {
+          display: flex; flex-direction: column; gap: 10px;
+          margin-bottom: 6px;
+        }
+        .lss-cards-row {
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+        }
+        .lss-card {
+          background: color-mix(in srgb, var(--seg-color) 8%, transparent);
+          border: 1px solid color-mix(in srgb, var(--seg-color) 30%, transparent);
+          border-radius: 10px; padding: 12px 14px;
+          display: flex; flex-direction: column; gap: 4px;
+        }
+        .lss-header {
+          display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+        }
+        .lss-label {
+          font-size: 11px; font-weight: 700; text-transform: uppercase;
+          letter-spacing: .06em;
+        }
+        .lss-count {
+          font-size: 10px; color: var(--text3); margin-left: auto;
+        }
+        .lss-pace {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 26px; font-weight: 700; color: var(--text1); line-height: 1;
+        }
+        .lss-unit { font-size: 12px; font-weight: 400; color: var(--text3); margin-left: 2px; }
+        .lss-meta { font-size: 11px; color: var(--text3); }
+
+        .lss-delta-row {
+          display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+          padding: 8px 12px; background: rgba(255,255,255,.02);
+          border-radius: 8px; border: 1px solid var(--card-border);
+        }
+        .lss-delta-label {
+          font-size: 11px; color: var(--text3); text-transform: uppercase;
+          letter-spacing: .06em; font-weight: 600;
+        }
+        .lss-delta-chip {
+          font-size: 11px; font-weight: 700;
+          font-family: 'Barlow Condensed', sans-serif;
+        }
+
+        /* Segment group divider inside the lap table */
+        .lap-segment-group { }
+        .lap-segment-divider {
+          display: flex; align-items: center; gap: 8px;
+          padding: 8px 8px 6px;
+          border-top: 2px solid color-mix(in srgb, var(--seg-color) 40%, transparent);
+          margin-top: 2px;
+        }
+        .lap-segment-divider:first-child { border-top: none; margin-top: 0; }
+        .lsd-label {
+          display: flex; align-items: center;
+          font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+        }
+        .lsd-stats {
+          font-size: 11px; color: var(--text3); margin-left: auto;
+          font-family: 'Barlow Condensed', sans-serif; font-size: 13px;
+        }
 
         .cal-workout-item {
           display: flex;
