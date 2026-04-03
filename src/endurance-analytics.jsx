@@ -443,8 +443,38 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
     hour < 12 ? "Good morning" :
     hour < 17 ? "Good afternoon" : "Good evening";
 
-  // Today's wellness — keyed by date so it resets daily automatically
-  const todayKey = today.toISOString().split("T")[0];
+  // Today's wellness — keyed by LOCAL date so it resets at midnight in the user's timezone
+  const localDateStr = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
+  };
+  const [todayKey, setTodayKey] = useState(localDateStr);
+
+  // Reset wellness at midnight by watching the date
+  useEffect(() => {
+    const checkMidnight = () => {
+      const newKey = localDateStr();
+      if (newKey !== todayKey) {
+        setTodayKey(newKey);
+        setWellnessState({});
+        setSubmittedState(false);
+        setDraftState({});
+      }
+    };
+    // Check every minute
+    const interval = setInterval(checkMidnight, 60000);
+    // Also schedule an exact midnight reset
+    const now = new Date();
+    const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0) - now;
+    const midnightTimer = setTimeout(() => {
+      checkMidnight();
+    }, msUntilMidnight);
+    return () => { clearInterval(interval); clearTimeout(midnightTimer); };
+  }, [todayKey]);
+
   const loadWellness = () => {
     try { return JSON.parse(localStorage.getItem(`apex_wellness_${todayKey}`)) || {}; } catch { return {}; }
   };
@@ -5034,19 +5064,20 @@ function App() {
         .cal-week-totals {
           display: flex;
           flex-direction: column;
-          width: 90px;
+          width: 52px;
           flex-shrink: 0;
-          padding-left: 12px;
+          padding-left: 8px;
           border-left: 1px solid var(--card-border);
-          margin-left: 12px;
+          margin-left: 8px;
+          overflow: hidden;
         }
 
         .cwt-header {
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 700;
           color: var(--text3);
           text-transform: uppercase;
-          letter-spacing: 1px;
+          letter-spacing: 0.5px;
           padding: 6px 0;
           height: 28px;
           display: flex;
@@ -5058,29 +5089,30 @@ function App() {
           display: flex;
           flex-direction: column;
           justify-content: center;
-          padding: 4px 0;
+          padding: 2px 0;
           border-top: 1px solid var(--card-border);
         }
 
         .cwt-km {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: 18px;
-          font-weight: 600;
+          font-size: 13px;
+          font-weight: 700;
           color: var(--text);
           line-height: 1;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .cwt-unit {
-          font-size: 10px;
+          font-size: 9px;
           color: var(--text3);
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.3px;
         }
 
         .cwt-sessions {
-          font-size: 10px;
-          color: var(--text3);
-          margin-top: 2px;
+          display: none;
         }
 
         /* Selected day workout list */
@@ -5256,8 +5288,8 @@ function App() {
         .phone-frame-root .pred-cards { grid-template-columns: 1fr 1fr !important; }
         .phone-frame-root .row-2-inline { grid-template-columns: 1fr 1fr; }
         .phone-frame-root .app { overflow: hidden; height: 852px; }
-        .phone-frame-root .app-body { height: calc(852px - 56px - 56px); overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
-        .phone-frame-root .main { height: 100%; overflow-y: auto; }
+        .phone-frame-root .app-body { height: calc(852px - 52px); overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+        .phone-frame-root .main { height: 100%; overflow-y: auto; padding-bottom: 90px !important; }
         @media (max-width: 640px) {
           /* Workout rows — bigger touch targets */
           .workout-row { padding: 14px 10px; gap: 10px; }
