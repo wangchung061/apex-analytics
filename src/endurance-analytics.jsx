@@ -577,299 +577,314 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
   const R = 80, STROKE = 10;
   const circ = 2 * Math.PI * R;
   const dash = circ * (readinessPct / 100);
-  // Strain ring helpers
-  const mkRing = (pct, r, stroke, color, glow) => {
+  // ── ring geometry helper ────────────────────────────────────────────────────
+  const mkArc = (pct, cx, cy, r, sw) => {
     const c = 2 * Math.PI * r;
     const d = c * Math.min(1, Math.max(0, pct));
-    return { c, d, color, r, stroke, glow };
+    return { c, d, cx, cy, r, sw };
   };
-  const strainPct  = hasData ? Math.min(1, latest.atl / 21) : 0;
-  const recoveryPct = readinessPct / 100;
-  const sleepPct   = wellnessApplied && sleepHrs > 0 ? Math.min(1, sleepHrs / 9) : 0;
 
-  const strainColor   = strainPct > 0.75 ? "#ef4444" : strainPct > 0.5 ? "#f97316" : "#38bdf8";
-  const recovColor    = readinessColor;
-  const sleepColor    = sleepPct >= 0.85 ? "#00d4aa" : sleepPct >= 0.65 ? "#e8ff47" : "#f97316";
+  const strainVal    = hasData ? parseFloat(latest.atl.toFixed(1)) : 0;
+  const strainPct    = Math.min(1, strainVal / 21);
+  const recoveryPct  = readinessPct / 100;
+  const sleepPct     = wellnessApplied && sleepHrs > 0 ? Math.min(1, sleepHrs / 9) : 0;
+  const strainColor  = strainPct > 0.75 ? "#e05252"   // deep crimson
+                     : strainPct > 0.45 ? "#c97b3a"   // burnished amber
+                     : "#4a9ebb";                      // steel blue
+  const recovColor   = readinessPct >= 75 ? "#5bbfa0"  // deep jade
+                     : readinessPct >= 55 ? "#c4a84f"  // antique gold
+                     : readinessPct >= 35 ? "#c97b3a"  // burnished amber
+                     : "#9e4f4f";                      // deep rose
+  const sleepColor   = sleepPct >= 0.85 ? "#5bbfa0"   // deep jade
+                     : sleepPct >= 0.6  ? "#c4a84f"   // antique gold
+                     : "#c97b3a";                      // burnished amber
 
-  const dayLabel = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  // week helpers
+  const weekStartDate = new Date(today); weekStartDate.setDate(today.getDate()-today.getDay()); weekStartDate.setHours(0,0,0,0);
+  const weekWorkouts  = uploadedWorkouts.filter(w => new Date(w.date+"T00:00:00") >= weekStartDate);
+  const weekTSS       = weekWorkouts.reduce((s,w)=>s+(w.tss||0),0);
+  const weekSessions  = weekWorkouts.length;
+
+  // last activity compact info
+  const lastType     = lastWorkout?.workoutType?.label || "Run";
+  const lastTypeColor = lastWorkout?.workoutType?.color || "#38bdf8";
+  const lastWhen     = daysSinceLast === 0 ? "Today" : daysSinceLast === 1 ? "Yesterday" : `${daysSinceLast}d ago`;
+  const lastDateStr  = lastWorkout ? new Date(lastWorkout.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}) : "";
+  const lastStrain   = lastWorkout ? lastWorkout.tss : 0;
+  const lastStrainPct = Math.min(1, lastStrain / 150);
+  const lastStrainColor = lastStrainPct > 0.65 ? "#ef4444" : lastStrainPct > 0.35 ? "#f97316" : "#38bdf8";
 
   return (
-    <div className="whoop-dash">
+    <div className="wd-root">
 
-      {/* ── HERO HEADER ── */}
-      <div className="whoop-hero">
-        <div className="whoop-hero-top">
-          <div className="whoop-greeting">
-            <div className="whoop-hello">{timeGreeting},</div>
-            <div className="whoop-name">{athlete.name.split(" ")[0]}</div>
-          </div>
-          <div className="whoop-date-pill">{dayLabel}</div>
+      {/* ══ TOP BAR ══ */}
+      <div className="wd-topbar">
+        <div className="wd-topbar-left">
+          <div className="wd-topbar-greeting">{timeGreeting}</div>
+          <div className="wd-topbar-name">{athlete.name.split(" ")[0]}</div>
         </div>
+        <div className="wd-topbar-date">{new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div>
+      </div>
 
-        {/* ── THREE SCORE RINGS ── */}
-        <div className="whoop-rings">
+      {/* ══ THREE CONCENTRIC RINGS — no card, floats on bg ══ */}
+      <div className="wd-rings-wrap">
+        <div className="wd-rings-glow" style={{ background: `radial-gradient(ellipse at 50% 50%, ${recovColor}1a 0%, transparent 65%)` }} />
 
-          {/* STRAIN */}
+        <svg className="wd-rings-svg" viewBox="0 0 280 280" preserveAspectRatio="xMidYMid meet">
+
+          {/* ── OUTER: STRAIN ── */}
           {(() => {
-            const r = mkRing(strainPct, 52, 7, strainColor);
+            const r = 126, sw = 9, cx = 140, cy = 140;
+            const c = 2 * Math.PI * r, d = c * strainPct;
             return (
-              <div className="whoop-ring-block">
-                <svg width="120" height="120" viewBox="0 0 120 120">
-                  <circle cx="60" cy="60" r={r.r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={r.stroke} />
-                  <circle cx="60" cy="60" r={r.r} fill="none" stroke={r.color} strokeWidth={r.stroke}
-                    strokeDasharray={`${r.d} ${r.c}`} strokeLinecap="round"
-                    transform="rotate(-90 60 60)"
-                    style={{ filter: `drop-shadow(0 0 6px ${r.color}88)`, transition: "stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)" }} />
-                  <text x="60" y="55" textAnchor="middle" fill="#f8fafc" fontSize="22" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">
-                    {hasData ? latest.atl.toFixed(0) : "—"}
-                  </text>
-                  <text x="60" y="70" textAnchor="middle" fill="rgba(255,255,255,.4)" fontSize="9" fontFamily="'Inter',sans-serif" letterSpacing="1">
-                    / 21
-                  </text>
-                </svg>
-                <div className="whoop-ring-label" style={{ color: strainColor }}>STRAIN</div>
-              </div>
+              <g>
+                <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth={sw} />
+                <circle cx={cx} cy={cy} r={r} fill="none" stroke={strainColor} strokeWidth={sw}
+                  strokeDasharray={`${d} ${c}`} strokeLinecap="round"
+                  transform={`rotate(-90 ${cx} ${cy})`}
+                  style={{ filter:`drop-shadow(0 0 7px ${strainColor}88)`, transition:"stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1)" }} />
+                {/* Strain label — top-right outside ring */}
+                <text x="247" y="60" textAnchor="middle" fill={strainColor} fontSize="7.5" fontWeight="800" fontFamily="'Inter',sans-serif" letterSpacing="2" opacity="0.9">STRAIN</text>
+                <text x="247" y="74" textAnchor="middle" fill="rgba(255,255,255,.9)" fontSize="15" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">{hasData ? strainVal : "—"}</text>
+              </g>
             );
           })()}
 
-          {/* RECOVERY — centre, larger */}
+          {/* ── MIDDLE: RECOVERY ── */}
           {(() => {
-            const r = mkRing(recoveryPct, 64, 8, recovColor);
+            const r = 99, sw = 10, cx = 140, cy = 140;
+            const c = 2 * Math.PI * r, d = c * recoveryPct;
             return (
-              <div className="whoop-ring-block whoop-ring-block--hero">
-                <svg width="148" height="148" viewBox="0 0 148 148">
-                  <circle cx="74" cy="74" r={r.r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={r.stroke} />
-                  {hasData && (
-                    <circle cx="74" cy="74" r={r.r} fill="none" stroke={r.color} strokeWidth={r.stroke + 3}
-                      strokeDasharray={`${r.d} ${r.c}`} strokeLinecap="round"
-                      transform="rotate(-90 74 74)"
-                      opacity="0.2"
-                      style={{ filter: "blur(3px)" }} />
-                  )}
-                  <circle cx="74" cy="74" r={r.r} fill="none" stroke={hasData ? r.color : "rgba(255,255,255,.1)"} strokeWidth={r.stroke}
-                    strokeDasharray={`${r.d} ${r.c}`} strokeLinecap="round"
-                    transform="rotate(-90 74 74)"
-                    style={{ filter: hasData ? `drop-shadow(0 0 8px ${r.color}99)` : "none", transition: "stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)" }} />
-                  <text x="74" y="66" textAnchor="middle" fill={hasData ? "#f8fafc" : "rgba(255,255,255,.3)"} fontSize="36" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">
-                    {hasData ? readinessPct : "—"}
-                  </text>
-                  <text x="74" y="83" textAnchor="middle" fill={hasData ? r.color : "rgba(255,255,255,.2)"} fontSize="10" fontWeight="700" fontFamily="'Barlow Condensed',sans-serif" letterSpacing="2">
-                    {readinessLabel.toUpperCase()}
-                  </text>
-                </svg>
-                <div className="whoop-ring-label" style={{ color: recovColor }}>RECOVERY</div>
-              </div>
+              <g>
+                <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth={sw} />
+                {hasData && (
+                  <circle cx={cx} cy={cy} r={r} fill="none" stroke={recovColor} strokeWidth={sw + 6}
+                    strokeDasharray={`${d} ${c}`} strokeLinecap="round"
+                    transform={`rotate(-90 ${cx} ${cy})`} opacity="0.12"
+                    style={{ filter:"blur(6px)" }} />
+                )}
+                <circle cx={cx} cy={cy} r={r} fill="none" stroke={hasData ? recovColor : "rgba(255,255,255,.07)"} strokeWidth={sw}
+                  strokeDasharray={`${d} ${c}`} strokeLinecap="round"
+                  transform={`rotate(-90 ${cx} ${cy})`}
+                  style={{ filter: hasData ? `drop-shadow(0 0 10px ${recovColor}bb)` : "none", transition:"stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1)" }} />
+                {/* Recovery label — top-left outside ring */}
+                <text x="33" y="60" textAnchor="middle" fill={hasData ? recovColor : "rgba(255,255,255,.18)"} fontSize="7.5" fontWeight="800" fontFamily="'Inter',sans-serif" letterSpacing="2" opacity="0.9">RECOVERY</text>
+                <text x="33" y="74" textAnchor="middle" fill="rgba(255,255,255,.9)" fontSize="15" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">{hasData ? `${readinessPct}%` : "—"}</text>
+              </g>
             );
           })()}
 
-          {/* SLEEP */}
+          {/* ── INNER: SLEEP ── */}
           {(() => {
-            const r = mkRing(sleepPct, 52, 7, sleepColor);
+            const r = 72, sw = 9, cx = 140, cy = 140;
+            const c = 2 * Math.PI * r, d = c * sleepPct;
+            const sleepTxt = wellnessApplied && sleepHrs > 0
+              ? `${Math.floor(sleepHrs)}h${Math.round((sleepHrs%1)*60)>0?Math.round((sleepHrs%1)*60)+"m":""}`
+              : "—";
+
+            // Centre block: two lines. Score 52px + gap + label 12px ≈ 70px total.
+            // To vertically centre at cy=140: top of block = 140 - 35 = 105
+            // Line 1 baseline (fontSize 52, baseline ≈ 0.8 of size): 105 + 42 = 147
+            // Line 2 baseline: 147 + 6 (gap) + 12 = 165... too low.
+            // Better: treat midpoint between the two baselines = cy
+            // Line 1 y = cy - 10 = 130, line 2 y = cy + 18 = 158
             return (
-              <div className="whoop-ring-block">
-                <svg width="120" height="120" viewBox="0 0 120 120">
-                  <circle cx="60" cy="60" r={r.r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={r.stroke} />
-                  <circle cx="60" cy="60" r={r.r} fill="none" stroke={sleepPct > 0 ? r.color : "rgba(255,255,255,.1)"} strokeWidth={r.stroke}
-                    strokeDasharray={`${r.d} ${r.c}`} strokeLinecap="round"
-                    transform="rotate(-90 60 60)"
-                    style={{ filter: sleepPct > 0 ? `drop-shadow(0 0 6px ${r.color}88)` : "none", transition: "stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1)" }} />
-                  <text x="60" y="55" textAnchor="middle" fill="#f8fafc" fontSize="18" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">
-                    {wellnessApplied && sleepHrs > 0 ? `${Math.floor(sleepHrs)}h${Math.round((sleepHrs % 1) * 60) > 0 ? `${Math.round((sleepHrs % 1) * 60)}m` : ""}` : "—"}
-                  </text>
-                  <text x="60" y="70" textAnchor="middle" fill="rgba(255,255,255,.4)" fontSize="9" fontFamily="'Inter',sans-serif" letterSpacing="1">
-                    {sleepPct > 0 ? `/ 9h` : "log sleep"}
-                  </text>
-                </svg>
-                <div className="whoop-ring-label" style={{ color: sleepPct > 0 ? sleepColor : "rgba(255,255,255,.3)" }}>SLEEP</div>
-              </div>
+              <g>
+                <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth={sw} />
+                <circle cx={cx} cy={cy} r={r} fill="none" stroke={sleepPct > 0 ? sleepColor : "rgba(255,255,255,.06)"} strokeWidth={sw}
+                  strokeDasharray={`${d} ${c}`} strokeLinecap="round"
+                  transform={`rotate(-90 ${cx} ${cy})`}
+                  style={{ filter: sleepPct > 0 ? `drop-shadow(0 0 7px ${sleepColor}99)` : "none", transition:"stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1)" }} />
+
+                {/* ── CENTRED score text ── */}
+                {/* Score number: large, sits just above centre */}
+                <text x={cx} y={cy + 16} textAnchor="middle" dominantBaseline="middle"
+                  fill={hasData ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.2)"}
+                  fontSize="52" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif"
+                  style={{ letterSpacing: "-1px" }}>
+                  {hasData ? readinessPct : "—"}
+                </text>
+                {/* Label: sits below score */}
+                <text x={cx} y={cy + 46} textAnchor="middle" dominantBaseline="middle"
+                  fill={hasData ? recovColor : "rgba(255,255,255,.18)"}
+                  fontSize="10" fontWeight="800" fontFamily="'Inter',sans-serif" letterSpacing="3">
+                  {readinessLabel.toUpperCase()}
+                </text>
+
+                {/* Sleep label — bottom-right outside ring */}
+                <text x="247" y="207" textAnchor="middle" fill={sleepPct > 0 ? sleepColor : "rgba(255,255,255,.18)"} fontSize="7.5" fontWeight="800" fontFamily="'Inter',sans-serif" letterSpacing="2" opacity="0.9">SLEEP</text>
+                <text x="247" y="221" textAnchor="middle" fill="rgba(255,255,255,.9)" fontSize="15" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">{sleepTxt}</text>
+              </g>
             );
           })()}
-        </div>
+        </svg>
 
-        {/* ── RECOMMENDATION PILL ── */}
-        <div className="whoop-rec-pill">
-          <div className="whoop-rec-dot" style={{ background: readinessColor }} />
-          <span>{suggestion}</span>
+        {/* Recommendation strip */}
+        <div className="wd-rec-strip">
+          <span className="wd-rec-dot" style={{ background: recovColor, boxShadow:`0 0 6px ${recovColor}` }} />
+          <span className="wd-rec-text">{suggestion}</span>
         </div>
       </div>
 
-      {/* ── METRICS ROW: Fitness / Form / VO2max ── */}
-      <div className="whoop-metrics-row">
+      {/* ══ STAT GRID (2×2) ══ */}
+      <div className="wd-stat-grid">
         {[
-          { label: "FITNESS", value: hasData ? latest.ctl.toFixed(0) : "—", sub: "CTL", color: "#38bdf8" },
-          { label: "FORM",    value: hasData ? `${latest.tsb >= 0 ? "+" : ""}${latest.tsb.toFixed(0)}` : "—", sub: "TSB", color: hasData ? (latest.tsb >= 0 ? "#00d4aa" : "#f97316") : "var(--text3)" },
-          { label: "VO2MAX",  value: (() => { const hasVO2 = (parseFloat(athlete.vo2max)||0)>0||perfVO2maxDash; return hasVO2 ? resolvedVO2maxDash.value : "—"; })(), sub: "ml/kg/min", color: "var(--accent)" },
-          { label: "HRV",     value: wellnessApplied && dHRV ? `${dHRV}` : athlete.hrv || "—", sub: "ms baseline", color: "#a78bfa" },
+          { label: "FITNESS", val: hasData ? latest.ctl.toFixed(0) : "—", sub: "CTL · 42d avg", color: "#4a9ebb",
+            bar: hasData ? Math.min(1, latest.ctl / 100) : 0, barColor: "#4a9ebb" },
+          { label: "FORM",    val: hasData ? `${latest.tsb >= 0 ? "+" : ""}${latest.tsb.toFixed(0)}` : "—", sub: "TSB · fitness − fatigue",
+            color: hasData ? (latest.tsb >= 0 ? "#5bbfa0" : "#c97b3a") : "rgba(255,255,255,.2)",
+            bar: hasData ? Math.min(1, Math.abs(latest.tsb) / 30) : 0,
+            barColor: hasData ? (latest.tsb >= 0 ? "#5bbfa0" : "#c97b3a") : "rgba(255,255,255,.08)" },
+          { label: "VO2MAX",  val: (() => { const hv = (parseFloat(athlete.vo2max)||0)>0||perfVO2maxDash; return hv ? resolvedVO2maxDash.value : "—"; })(),
+            sub: "ml · kg⁻¹ · min⁻¹", color: "#c4a84f",
+            bar: (() => { const hv = (parseFloat(athlete.vo2max)||0)>0||perfVO2maxDash; return hv ? Math.min(1,(resolvedVO2maxDash.value-30)/60) : 0; })(),
+            barColor: "#c4a84f" },
+          { label: "HRV",     val: wellnessApplied && dHRV ? dHRV : athlete.hrv || "—", sub: "ms · morning baseline", color: "#9b8ec4",
+            bar: wellnessApplied && dHRV ? Math.min(1, dHRV / 100) : Math.min(1, (athlete.hrv || 0) / 100),
+            barColor: "#9b8ec4" },
         ].map(m => (
-          <div key={m.label} className="whoop-metric-tile">
-            <div className="whoop-metric-val" style={{ color: m.color }}>{m.value}</div>
-            <div className="whoop-metric-lbl">{m.label}</div>
-            <div className="whoop-metric-sub">{m.sub}</div>
+          <div key={m.label} className="wd-stat-tile">
+            <div className="wd-stat-label">{m.label}</div>
+            <div className="wd-stat-val" style={{ color: m.color }}>{m.val}</div>
+            <div className="wd-stat-sub">{m.sub}</div>
+            <div className="wd-stat-bar-track">
+              <div className="wd-stat-bar-fill" style={{ width:`${(m.bar||0)*100}%`, background: m.barColor, boxShadow:`0 0 6px ${m.barColor}66` }} />
+            </div>
           </div>
         ))}
       </div>
 
-      {/* ── LAST ACTIVITY ── */}
-      <div className="whoop-section-label">LAST ACTIVITY</div>
-      <div className="whoop-activity-card">
+      {/* ══ LAST ACTIVITY ══ */}
+      <div className="wd-section-hdr">LAST ACTIVITY</div>
+      <div className="wd-activity">
         {lastWorkout ? (
-          <>
-            <div className="whoop-activity-top">
-              <div>
-                <div className="whoop-activity-name">{lastWorkout.name}</div>
-                <div className="whoop-activity-when">
-                  {daysSinceLast === 0 ? "Today" : daysSinceLast === 1 ? "Yesterday" : `${daysSinceLast}d ago`}
-                  {" · "}{new Date(lastWorkout.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                </div>
-              </div>
+          <div className="wd-activity-inner">
+            <div className="wd-activity-left">
+              {/* Activity name */}
+              <div className="wd-activity-name">{lastWorkout.name}</div>
+              {/* Date */}
+              <div className="wd-activity-date">{lastDateStr}</div>
+              {/* Category badge */}
               {lastWorkout.workoutType && (
-                <span className="whoop-activity-badge" style={{ "--b-color": lastWorkout.workoutType.color }}>
-                  {lastWorkout.workoutType.label}
-                </span>
+                <div className="wd-activity-type-badge" style={{ "--tc": lastTypeColor }}>
+                  <Icon name={lastWorkout.workoutType?.icon || "run"} size={12} color={lastTypeColor} />
+                  <span>{lastType}</span>
+                </div>
               )}
             </div>
-            <div className="whoop-activity-stats">
-              <div className="whoop-activity-stat">
-                <div className="whoop-activity-stat-val">{fmtDist(lastWorkout.distance, units)}</div>
-                <div className="whoop-activity-stat-lbl">Distance</div>
-              </div>
-              <div className="whoop-activity-stat-divider" />
-              <div className="whoop-activity-stat">
-                <div className="whoop-activity-stat-val">{fmtDuration(lastWorkout.duration)}</div>
-                <div className="whoop-activity-stat-lbl">Duration</div>
-              </div>
-              <div className="whoop-activity-stat-divider" />
-              <div className="whoop-activity-stat">
-                <div className="whoop-activity-stat-val">{fmtPaceWithUnit(lastWorkout.avgPace, units).pace}<span style={{fontSize:11,color:"var(--text3)"}}>{fmtPaceWithUnit(lastWorkout.avgPace, units).unit}</span></div>
-                <div className="whoop-activity-stat-lbl">Avg Pace</div>
-              </div>
-              <div className="whoop-activity-stat-divider" />
-              <div className="whoop-activity-stat">
-                <div className="whoop-activity-stat-val">{lastWorkout.avgHR}<span style={{fontSize:11,color:"var(--text3)"}}>bpm</span></div>
-                <div className="whoop-activity-stat-lbl">Avg HR</div>
-              </div>
+            {/* Strain — plain number, no ring */}
+            <div className="wd-activity-strain-block">
+              <div className="wd-activity-strain-num" style={{ color: lastStrainColor }}>{lastStrain}</div>
+              <div className="wd-activity-strain-sub">TSS</div>
+              <div className="wd-activity-strain-lbl" style={{ color: lastStrainColor }}>STRAIN</div>
             </div>
-            {/* Strain bar */}
-            <div className="whoop-strain-bar-wrap">
-              <div className="whoop-strain-bar-label">
-                <span>Strain</span>
-                <span style={{ color: strainColor, fontWeight: 700 }}>{lastWorkout.tss} TSS</span>
-              </div>
-              <div className="whoop-strain-bar-track">
-                <div className="whoop-strain-bar-fill" style={{ width: `${Math.min(100, (lastWorkout.tss / 150) * 100)}%`, background: strainColor, boxShadow: `0 0 8px ${strainColor}66` }} />
-              </div>
-            </div>
-          </>
+          </div>
         ) : (
-          <div className="whoop-activity-empty">
-            <Icon name="run" size={28} color="rgba(255,255,255,.15)" />
-            <span>Import a workout to see your last activity</span>
+          <div className="wd-activity-empty">
+            <Icon name="run" size={22} color="rgba(255,255,255,.15)" />
+            <span>Import a workout to get started</span>
           </div>
         )}
       </div>
 
-      {/* ── THIS WEEK ── */}
-      <div className="whoop-section-label">THIS WEEK</div>
-      <div className="whoop-week-row">
-        <div className="whoop-week-tile">
-          <div className="whoop-week-val">{hasData ? weekDistFmt : "—"}</div>
-          <div className="whoop-week-lbl">Distance</div>
-        </div>
-        <div className="whoop-week-tile">
-          <div className="whoop-week-val">{uploadedWorkouts.filter(w => { const ws = new Date(today); ws.setDate(today.getDate()-today.getDay()); ws.setHours(0,0,0,0); return new Date(w.date+"T00:00:00") >= ws; }).length || "—"}</div>
-          <div className="whoop-week-lbl">Sessions</div>
-        </div>
-        <div className="whoop-week-tile">
-          <div className="whoop-week-val">{hasData ? uploadedWorkouts.filter(w => { const ws = new Date(today); ws.setDate(today.getDate()-today.getDay()); ws.setHours(0,0,0,0); return new Date(w.date+"T00:00:00") >= ws; }).reduce((s,w)=>s+(w.tss||0),0) || "—" : "—"}</div>
-          <div className="whoop-week-lbl">TSS</div>
-        </div>
+      {/* ══ THIS WEEK ══ */}
+      <div className="wd-section-hdr">THIS WEEK</div>
+      <div className="wd-week-strip">
+        {[
+          { label: "DISTANCE", val: hasData ? weekDistFmt : "—" },
+          { label: "SESSIONS", val: weekSessions || "—" },
+          { label: "TSS",      val: weekTSS || "—" },
+        ].map(t => (
+          <div key={t.label} className="wd-week-tile">
+            <div className="wd-week-val">{t.val}</div>
+            <div className="wd-week-lbl">{t.label}</div>
+          </div>
+        ))}
       </div>
 
-      {/* ── DAILY LOG CARD ── */}
-      <div className="whoop-section-label">
+      {/* ══ DAILY LOG ══ */}
+      <div className="wd-section-hdr">
         DAILY LOG
-        {submitted && wellnessApplied && <span className="whoop-log-check">✓ Applied</span>}
+        {submitted && wellnessApplied && <span className="wd-log-badge">✓ APPLIED</span>}
       </div>
-      <div className="whoop-log-card">
+      <div className="wd-log">
         {submitted ? (
-          <>
-            <div className="whoop-log-submitted">
-              {[
-                { label: "Sleep", value: `${draft.sleepH||0}h ${draft.sleepM||0}m`, color: sleepColor },
-                { label: "Quality", value: dSleepQ > 0 ? `${dSleepQ}/5` : "—", color: "#a78bfa" },
-                { label: "HRV", value: draft.hrv ? `${draft.hrv} ms` : "—", color: "#a78bfa" },
-                { label: "Soreness", value: dSoreness > 0 ? ["","None","Mild","Moderate","High","Severe"][dSoreness] : "—", color: dSoreness >= 4 ? "#ef4444" : dSoreness >= 3 ? "#f97316" : "#34d399" },
-                { label: "Energy", value: dEnergy > 0 ? ["","Exhausted","Low","OK","Good","Great"][dEnergy] : "—", color: dEnergy >= 4 ? "#34d399" : dEnergy >= 3 ? "#e8ff47" : "#f97316" },
-              ].map(item => (
-                <div key={item.label} className="whoop-log-row">
-                  <span className="whoop-log-key">{item.label}</span>
-                  <span className="whoop-log-val" style={{ color: item.color }}>{item.value}</span>
-                </div>
-              ))}
+          /* ── Minimized pill — tap to expand ── */
+          <div className="wd-log-mini" onClick={handleEditWellness}>
+            <div className="wd-log-mini-chips">
+              {sleepHrs > 0 && (
+                <span className="wd-log-mini-chip" style={{ "--mc": sleepColor }}>
+                  <Icon name="sleep" size={10} color={sleepColor} />
+                  {Math.floor(sleepHrs)}h{Math.round((sleepHrs%1)*60)>0?Math.round((sleepHrs%1)*60)+"m":""}
+                </span>
+              )}
+              {dHRV && (
+                <span className="wd-log-mini-chip" style={{ "--mc": "#a78bfa" }}>
+                  <Icon name="heart" size={10} color="#a78bfa" />
+                  {dHRV} ms
+                </span>
+              )}
+              {dSoreness > 0 && (
+                <span className="wd-log-mini-chip" style={{ "--mc": dSoreness >= 4 ? "#ef4444" : dSoreness >= 3 ? "#f97316" : "#34d399" }}>
+                  {["","None","Mild","Mod","High","Max"][dSoreness]}
+                </span>
+              )}
+              {dEnergy > 0 && (
+                <span className="wd-log-mini-chip" style={{ "--mc": dEnergy >= 4 ? "#34d399" : dEnergy >= 3 ? "#e8ff47" : "#f97316" }}>
+                  {["","Low","Low","OK","Good","Great"][dEnergy]}
+                </span>
+              )}
             </div>
-            <button className="whoop-log-edit-btn" onClick={handleEditWellness}>Edit Log</button>
-          </>
+            <span className="wd-log-mini-edit">Edit ›</span>
+          </div>
         ) : (
           <>
-            <div className="whoop-log-form">
-              {/* Sleep row */}
-              <div className="whoop-log-field">
-                <div className="whoop-log-field-label"><Icon name="sleep" size={12} style={{marginRight:5}} />Sleep</div>
-                <div className="whoop-log-field-inputs">
-                  <input className="whoop-input" type="number" min="0" max="14" placeholder="0" value={dSleepH} onChange={e => setDraft({ sleepH: e.target.value })} /><span className="whoop-unit">h</span>
-                  <input className="whoop-input" type="number" min="0" max="59" step="5" placeholder="0" value={dSleepM} onChange={e => setDraft({ sleepM: e.target.value })} /><span className="whoop-unit">m</span>
+            <div className="wd-log-form">
+              <div className="wd-log-field">
+                <span className="wd-log-field-lbl"><Icon name="sleep" size={11} style={{marginRight:4}} />Sleep</span>
+                <div className="wd-log-field-inputs">
+                  <input className="wd-inp" type="number" min="0" max="14" placeholder="0" value={dSleepH} onChange={e=>setDraft({sleepH:e.target.value})} />
+                  <span className="wd-unit">h</span>
+                  <input className="wd-inp" type="number" min="0" max="59" step="5" placeholder="0" value={dSleepM} onChange={e=>setDraft({sleepM:e.target.value})} />
+                  <span className="wd-unit">m</span>
                 </div>
               </div>
-              {/* HRV */}
-              <div className="whoop-log-field">
-                <div className="whoop-log-field-label"><Icon name="heart" size={12} style={{marginRight:5}} />HRV</div>
-                <div className="whoop-log-field-inputs">
-                  <input className="whoop-input" type="number" min="0" max="200" placeholder="—" value={dHRV} onChange={e => setDraft({ hrv: e.target.value })} /><span className="whoop-unit">ms</span>
+              <div className="wd-log-field">
+                <span className="wd-log-field-lbl"><Icon name="heart" size={11} style={{marginRight:4}} />HRV</span>
+                <div className="wd-log-field-inputs">
+                  <input className="wd-inp" type="number" min="0" max="200" placeholder="—" value={dHRV} onChange={e=>setDraft({hrv:e.target.value})} />
+                  <span className="wd-unit">ms</span>
                 </div>
               </div>
-              {/* Soreness dots */}
-              <div className="whoop-log-field">
-                <div className="whoop-log-field-label"><Icon name="warn" size={12} style={{marginRight:5}} />Soreness</div>
-                <div className="whoop-dots-row">
-                  {["None","Mild","Mod","High","Max"].map((lbl,v) => (
-                    <button key={v} className={`whoop-dot-btn ${dSoreness === v+1 ? "active" : ""}`}
-                      style={{ "--dot-active": "#f97316" }}
-                      onClick={() => setDraft({ soreness: dSoreness === v+1 ? 0 : v+1 })}>
-                      {lbl}
-                    </button>
+              <div className="wd-log-field">
+                <span className="wd-log-field-lbl"><Icon name="warn" size={11} style={{marginRight:4}} />Soreness</span>
+                <div className="wd-chips">
+                  {["None","Mild","Mod","High","Max"].map((l,i)=>(
+                    <button key={i} className={`wd-chip ${dSoreness===i+1?"wd-chip--on":""}`}
+                      style={{"--cc":"#c97b3a"}} onClick={()=>setDraft({soreness:dSoreness===i+1?0:i+1})}>{l}</button>
                   ))}
                 </div>
               </div>
-              {/* Energy dots */}
-              <div className="whoop-log-field">
-                <div className="whoop-log-field-label"><Icon name="power" size={12} style={{marginRight:5}} />Energy</div>
-                <div className="whoop-dots-row">
-                  {["Low","Low","OK","Good","Great"].map((lbl,v) => (
-                    <button key={v} className={`whoop-dot-btn ${dEnergy === v+1 ? "active" : ""}`}
-                      style={{ "--dot-active": "var(--accent)" }}
-                      onClick={() => setDraft({ energy: dEnergy === v+1 ? 0 : v+1 })}>
-                      {lbl}
-                    </button>
+              <div className="wd-log-field">
+                <span className="wd-log-field-lbl"><Icon name="power" size={11} style={{marginRight:4}} />Energy</span>
+                <div className="wd-chips">
+                  {["Low","↓","OK","Good","Great"].map((l,i)=>(
+                    <button key={i} className={`wd-chip ${dEnergy===i+1?"wd-chip--on":""}`}
+                      style={{"--cc":"#5bbfa0"}} onClick={()=>setDraft({energy:dEnergy===i+1?0:i+1})}>{l}</button>
                   ))}
                 </div>
               </div>
-              {/* Sleep quality */}
-              <div className="whoop-log-field">
-                <div className="whoop-log-field-label"><Icon name="star" size={12} style={{marginRight:5}} />Sleep Quality</div>
-                <div className="whoop-dots-row">
-                  {[1,2,3,4,5].map(v => (
-                    <button key={v} className={`whoop-dot-btn ${dSleepQ >= v ? "active" : ""}`}
-                      style={{ "--dot-active": "#38bdf8" }}
-                      onClick={() => setDraft({ sleepQual: dSleepQ === v ? 0 : v })}>
-                      {v}★
-                    </button>
+              <div className="wd-log-field">
+                <span className="wd-log-field-lbl"><Icon name="star" size={11} style={{marginRight:4}} />Sleep Quality</span>
+                <div className="wd-chips">
+                  {[1,2,3,4,5].map(v=>(
+                    <button key={v} className={`wd-chip ${dSleepQ>=v?"wd-chip--on":""}`}
+                      style={{"--cc":"#4a9ebb"}} onClick={()=>setDraft({sleepQual:dSleepQ===v?0:v})}>{v}★</button>
                   ))}
                 </div>
               </div>
             </div>
-            <button className="whoop-log-submit-btn" onClick={handleSubmitWellness}>
-              Update Readiness
-            </button>
+            <button className="wd-log-submit" onClick={handleSubmitWellness}>Update Readiness</button>
           </>
         )}
       </div>
@@ -5412,276 +5427,259 @@ function App() {
         /* Selected day workout list */
         .cal-workout-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 
-        /* ── WHOOP-STYLE DASHBOARD ──────────────────────────────── */
-        .whoop-dash {
-          display: flex; flex-direction: column; gap: 0;
-          padding-bottom: 24px;
+        /* ══ PREMIUM DASHBOARD ══════════════════════════════════════ */
+        .wd-root {
+          display: flex; flex-direction: column; gap: 10px;
+          padding: 0 0 24px;
+          background: #08080a;
+          min-height: 100%;
         }
 
-        /* Hero section — full bleed dark */
-        .whoop-hero {
-          background: #0a0a0c;
-          border-radius: 20px;
-          padding: 22px 20px 24px;
-          margin-bottom: 12px;
-          border: 1px solid rgba(255,255,255,.06);
+        /* Top bar */
+        .wd-topbar {
+          display: flex; align-items: flex-end; justify-content: space-between;
+          padding: 16px 16px 10px;
+        }
+        .wd-topbar-greeting {
+          font-size: 10px; color: rgba(255,255,255,.28);
+          text-transform: uppercase; letter-spacing: 2px; font-weight: 600;
+        }
+        .wd-topbar-name {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 32px; font-weight: 800;
+          color: rgba(255,255,255,.92);
+          line-height: 1; margin-top: 1px;
+          letter-spacing: -0.5px;
+        }
+        .wd-topbar-date {
+          font-size: 11px; color: rgba(255,255,255,.28);
+          border: 1px solid rgba(255,255,255,.09); border-radius: 20px;
+          padding: 3px 11px; margin-bottom: 5px;
+          letter-spacing: 0.3px;
+        }
+
+        /* Hero ring panel — no card, floats on bg */
+        .wd-rings-wrap {
           position: relative;
-          overflow: hidden;
-        }
-        .whoop-hero::before {
-          content: "";
-          position: absolute; inset: 0;
-          background: radial-gradient(ellipse at 50% -10%, rgba(232,255,71,.06) 0%, transparent 65%);
-          pointer-events: none;
-        }
-
-        .whoop-hero-top {
-          display: flex; align-items: flex-start; justify-content: space-between;
-          margin-bottom: 24px;
-        }
-        .whoop-hello {
-          font-size: 12px; color: rgba(255,255,255,.4); font-weight: 500;
-          text-transform: uppercase; letter-spacing: 1.5px;
-        }
-        .whoop-name {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-size: 34px; font-weight: 800; color: #fff;
-          letter-spacing: -0.5px; line-height: 1.05; margin-top: 2px;
-        }
-        .whoop-date-pill {
-          font-size: 11px; color: rgba(255,255,255,.35);
-          background: rgba(255,255,255,.06);
-          border: 1px solid rgba(255,255,255,.08);
-          border-radius: 20px; padding: 4px 10px;
-          white-space: nowrap; margin-top: 4px;
-        }
-
-        /* Three rings */
-        .whoop-rings {
-          display: flex; align-items: center; justify-content: center;
-          gap: 8px; margin-bottom: 20px;
-        }
-        .whoop-ring-block {
-          display: flex; flex-direction: column; align-items: center; gap: 6px;
-        }
-        .whoop-ring-block--hero {
-          margin: 0 4px;
-        }
-        .whoop-ring-label {
-          font-size: 9px; font-weight: 800; letter-spacing: 2px;
-          text-transform: uppercase;
-        }
-
-        /* Recommendation pill */
-        .whoop-rec-pill {
-          display: flex; align-items: center; gap: 8px;
-          background: rgba(255,255,255,.05);
-          border: 1px solid rgba(255,255,255,.08);
-          border-radius: 12px; padding: 10px 14px;
-        }
-        .whoop-rec-dot {
-          width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-        }
-        .whoop-rec-pill span {
-          font-size: 12px; color: rgba(255,255,255,.65); line-height: 1.4;
-        }
-
-        /* Metrics row */
-        .whoop-metrics-row {
-          display: grid; grid-template-columns: repeat(4, 1fr);
-          gap: 8px; margin-bottom: 12px;
-        }
-        .whoop-metric-tile {
-          background: #111115;
-          border: 1px solid rgba(255,255,255,.07);
-          border-radius: 14px; padding: 14px 10px;
           display: flex; flex-direction: column; align-items: center;
-          text-align: center; gap: 3px;
+          padding: 8px 10px 4px;
         }
-        .whoop-metric-val {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-size: 26px; font-weight: 800; line-height: 1;
-        }
-        .whoop-metric-lbl {
-          font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
-          text-transform: uppercase; color: rgba(255,255,255,.35);
-          margin-top: 2px;
-        }
-        .whoop-metric-sub {
-          font-size: 9px; color: rgba(255,255,255,.2);
+        .wd-rings-glow {
+          position: absolute; inset: 0; pointer-events: none; z-index: 0;
+          border-radius: 50%;
         }
 
-        /* Section label */
-        .whoop-section-label {
-          font-size: 9px; font-weight: 800; letter-spacing: 2px;
-          text-transform: uppercase; color: rgba(255,255,255,.3);
-          padding: 0 2px; margin-bottom: 8px; margin-top: 4px;
+        /* Full-width SVG rings */
+        .wd-rings-svg {
+          width: 280px; height: 280px; display: block;
+          position: relative; z-index: 1;
+        }
+
+        /* Rec strip */
+        .wd-rec-strip {
           display: flex; align-items: center; gap: 8px;
+          margin: 12px 16px 0; padding: 9px 13px;
+          background: rgba(255,255,255,.04);
+          border: 1px solid rgba(255,255,255,.06);
+          border-radius: 10px; position: relative; z-index: 1;
         }
-        .whoop-log-check {
-          font-size: 9px; color: #00d4aa; font-weight: 700;
-          letter-spacing: 1px;
+        .wd-rec-dot {
+          width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+        }
+        .wd-rec-text {
+          font-size: 11.5px; color: rgba(255,255,255,.6); line-height: 1.4;
         }
 
-        /* Activity card */
-        .whoop-activity-card {
-          background: #111115;
-          border: 1px solid rgba(255,255,255,.08);
-          border-radius: 18px; padding: 18px 16px;
-          margin-bottom: 16px;
+        /* 2×2 stat grid */
+        .wd-stat-grid {
+          display: grid; grid-template-columns: 1fr 1fr;
+          gap: 8px; padding: 0 10px;
         }
-        .whoop-activity-top {
-          display: flex; align-items: flex-start; justify-content: space-between;
-          margin-bottom: 16px; gap: 8px;
+        .wd-stat-tile {
+          background: #0f0f12;
+          border: 1px solid rgba(255,255,255,.06);
+          border-radius: 14px; padding: 14px 14px 12px;
+          display: flex; flex-direction: column; gap: 2px;
         }
-        .whoop-activity-name {
+        .wd-stat-label {
+          font-size: 8.5px; font-weight: 800; letter-spacing: 2px;
+          color: rgba(255,255,255,.28); text-transform: uppercase; margin-bottom: 2px;
+        }
+        .wd-stat-val {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: 20px; font-weight: 700; color: #fff; line-height: 1.1;
+          font-size: 34px; font-weight: 800; line-height: 1;
         }
-        .whoop-activity-when {
-          font-size: 11px; color: rgba(255,255,255,.35); margin-top: 3px;
+        .wd-stat-sub {
+          font-size: 9.5px; color: rgba(255,255,255,.22); margin-bottom: 8px;
         }
-        .whoop-activity-badge {
-          font-size: 10px; font-weight: 700; letter-spacing: .04em;
-          color: var(--b-color, #e8ff47);
-          border: 1px solid color-mix(in srgb, var(--b-color, #e8ff47) 35%, transparent);
-          background: color-mix(in srgb, var(--b-color, #e8ff47) 10%, transparent);
-          border-radius: 20px; padding: 3px 10px; white-space: nowrap; flex-shrink: 0;
+        .wd-stat-bar-track {
+          height: 3px; background: rgba(255,255,255,.07);
+          border-radius: 2px; overflow: hidden;
         }
-        .whoop-activity-stats {
-          display: flex; align-items: center;
-          background: rgba(255,255,255,.04);
-          border-radius: 12px; padding: 12px 8px;
-          gap: 0; margin-bottom: 14px;
-        }
-        .whoop-activity-stat {
-          flex: 1; display: flex; flex-direction: column;
-          align-items: center; gap: 4px; text-align: center;
-        }
-        .whoop-activity-stat-val {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-size: 18px; font-weight: 700; color: #fff; line-height: 1;
-        }
-        .whoop-activity-stat-lbl {
-          font-size: 9px; color: rgba(255,255,255,.3);
-          text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
-        }
-        .whoop-activity-stat-divider {
-          width: 1px; height: 28px; background: rgba(255,255,255,.08); flex-shrink: 0;
-        }
-        .whoop-strain-bar-wrap { }
-        .whoop-strain-bar-label {
-          display: flex; justify-content: space-between; align-items: center;
-          font-size: 10px; color: rgba(255,255,255,.35);
-          text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
-          margin-bottom: 6px;
-        }
-        .whoop-strain-bar-track {
-          height: 5px; background: rgba(255,255,255,.08);
-          border-radius: 3px; overflow: hidden;
-        }
-        .whoop-strain-bar-fill {
-          height: 100%; border-radius: 3px;
+        .wd-stat-bar-fill {
+          height: 100%; border-radius: 2px;
           transition: width 1s cubic-bezier(.4,0,.2,1);
         }
-        .whoop-activity-empty {
-          display: flex; flex-direction: column; align-items: center;
-          gap: 10px; padding: 24px 0; color: rgba(255,255,255,.2); font-size: 12px;
+
+        /* Section header */
+        .wd-section-hdr {
+          font-size: 8.5px; font-weight: 800; letter-spacing: 2px;
+          text-transform: uppercase; color: rgba(255,255,255,.28);
+          padding: 4px 16px 0;
+          display: flex; align-items: center; gap: 8px;
+        }
+        .wd-log-badge {
+          font-size: 8px; color: #5bbfa0; font-weight: 700; letter-spacing: 1px;
+          background: rgba(91,191,160,.1); border: 1px solid rgba(91,191,160,.22);
+          border-radius: 10px; padding: 2px 7px;
         }
 
-        /* Week tiles */
-        .whoop-week-row {
-          display: grid; grid-template-columns: repeat(3, 1fr);
-          gap: 8px; margin-bottom: 16px;
+        /* Last Activity */
+        .wd-activity {
+          background: #0f0f12;
+          border: 1px solid rgba(255,255,255,.06);
+          border-radius: 16px; margin: 0 10px;
+          padding: 16px;
         }
-        .whoop-week-tile {
-          background: #111115;
-          border: 1px solid rgba(255,255,255,.07);
-          border-radius: 14px; padding: 16px 10px;
-          display: flex; flex-direction: column; align-items: center;
-          gap: 5px; text-align: center;
-        }
-        .whoop-week-val {
+        .wd-activity-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .wd-activity-left { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+        .wd-activity-name {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: 26px; font-weight: 800; color: #fff; line-height: 1;
+          font-size: 20px; font-weight: 800; color: #fff;
+          line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .whoop-week-lbl {
-          font-size: 9px; color: rgba(255,255,255,.3);
-          text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700;
+        .wd-activity-date {
+          font-size: 11px; color: rgba(255,255,255,.3); margin-bottom: 4px;
+        }
+        .wd-activity-type-badge {
+          display: inline-flex; align-items: center; gap: 5px;
+          background: color-mix(in srgb, var(--tc, #38bdf8) 12%, transparent);
+          border: 1px solid color-mix(in srgb, var(--tc, #38bdf8) 30%, transparent);
+          border-radius: 20px; padding: 4px 10px;
+          font-size: 11px; font-weight: 700; color: var(--tc, #38bdf8);
+          width: fit-content;
+        }
+        /* Strain — plain number block */
+        .wd-activity-strain-block {
+          display: flex; flex-direction: column; align-items: center;
+          gap: 1px; flex-shrink: 0;
+          padding: 10px 16px;
+          background: rgba(255,255,255,.04);
+          border: 1px solid rgba(255,255,255,.06);
+          border-radius: 12px;
+        }
+        .wd-activity-strain-num {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 36px; font-weight: 800; line-height: 1;
+        }
+        .wd-activity-strain-sub {
+          font-size: 9px; color: rgba(255,255,255,.3); letter-spacing: 1px;
+        }
+        .wd-activity-strain-lbl {
+          font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
+          text-transform: uppercase; margin-top: 2px;
+        }
+        .wd-activity-empty {
+          display: flex; flex-direction: column; align-items: center;
+          gap: 8px; padding: 20px 0; color: rgba(255,255,255,.2); font-size: 11px;
         }
 
-        /* Daily log card */
-        .whoop-log-card {
-          background: #111115;
-          border: 1px solid rgba(255,255,255,.08);
-          border-radius: 18px; padding: 18px 16px;
-          margin-bottom: 8px;
+        /* Week strip */
+        .wd-week-strip {
+          display: grid; grid-template-columns: repeat(3, 1fr);
+          gap: 8px; padding: 0 10px;
         }
-        .whoop-log-submitted {
-          display: flex; flex-direction: column; gap: 0;
+        .wd-week-tile {
+          background: #0f0f12;
+          border: 1px solid rgba(255,255,255,.06);
+          border-radius: 14px; padding: 14px 10px;
+          display: flex; flex-direction: column; align-items: center; gap: 4px;
         }
-        .whoop-log-row {
+        .wd-week-val {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 24px; font-weight: 800; color: #fff; line-height: 1;
+        }
+        .wd-week-lbl {
+          font-size: 8px; color: rgba(255,255,255,.28);
+          text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;
+        }
+
+        /* Daily log */
+        .wd-log {
+          background: #0f0f12;
+          border: 1px solid rgba(255,255,255,.06);
+          border-radius: 16px; margin: 0 10px;
+          padding: 14px 16px;
+        }
+
+        /* Minimized pill — shown after submit */
+        .wd-log-mini {
           display: flex; align-items: center; justify-content: space-between;
-          padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.05);
-          font-size: 13px;
+          gap: 10px; cursor: pointer;
+          -webkit-tap-highlight-color: transparent;
         }
-        .whoop-log-row:last-child { border-bottom: none; }
-        .whoop-log-key { color: rgba(255,255,255,.4); font-weight: 500; }
-        .whoop-log-val { font-weight: 700; font-family: 'Barlow Condensed', sans-serif; font-size: 15px; }
-        .whoop-log-edit-btn {
-          width: 100%; margin-top: 14px; padding: 11px;
-          border-radius: 10px; border: 1px solid rgba(255,255,255,.12);
-          background: transparent; color: rgba(255,255,255,.5);
-          font-size: 12px; font-weight: 700; letter-spacing: .06em;
-          text-transform: uppercase; cursor: pointer; font-family: 'Inter', sans-serif;
-          transition: border-color .15s, color .15s;
+        .wd-log-mini-chips {
+          display: flex; flex-wrap: wrap; gap: 6px; flex: 1;
         }
-        .whoop-log-edit-btn:hover { border-color: rgba(255,255,255,.3); color: #fff; }
+        .wd-log-mini-chip {
+          display: inline-flex; align-items: center; gap: 4px;
+          font-size: 11px; font-weight: 600;
+          color: var(--mc, #38bdf8);
+          background: color-mix(in srgb, var(--mc, #38bdf8) 12%, transparent);
+          border: 1px solid color-mix(in srgb, var(--mc, #38bdf8) 28%, transparent);
+          border-radius: 20px; padding: 4px 9px;
+        }
+        .wd-log-mini-edit {
+          font-size: 11px; color: rgba(255,255,255,.3); white-space: nowrap;
+          flex-shrink: 0;
+        }
 
         /* Log form */
-        .whoop-log-form { display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
-        .whoop-log-field { display: flex; flex-direction: column; gap: 7px; }
-        .whoop-log-field-label {
-          font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
-          text-transform: uppercase; color: rgba(255,255,255,.35);
+        .wd-log-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+        .wd-log-field { display: flex; flex-direction: column; gap: 6px; }
+        .wd-log-field-lbl {
+          font-size: 8.5px; font-weight: 700; letter-spacing: 2px;
+          text-transform: uppercase; color: rgba(255,255,255,.25);
           display: flex; align-items: center;
         }
-        .whoop-log-field-inputs { display: flex; align-items: center; gap: 6px; }
-        .whoop-input {
-          width: 64px; padding: 8px 10px;
-          border-radius: 8px; border: 1px solid rgba(255,255,255,.1);
-          background: rgba(255,255,255,.05); color: #fff;
-          font-size: 18px; font-family: 'Barlow Condensed', sans-serif;
+        .wd-log-field-inputs { display: flex; align-items: center; gap: 5px; }
+        .wd-inp {
+          width: 58px; padding: 7px 8px;
+          border-radius: 8px; border: 1px solid rgba(255,255,255,.08);
+          background: rgba(255,255,255,.04); color: rgba(255,255,255,.9);
+          font-size: 16px; font-family: 'Barlow Condensed', sans-serif;
           font-weight: 700; text-align: center; outline: none;
+          transition: border-color .15s;
         }
-        .whoop-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232,255,71,.1); }
-        .whoop-unit { font-size: 12px; color: rgba(255,255,255,.3); }
+        .wd-inp:focus { border-color: rgba(196,168,79,.5); }
+        .wd-unit { font-size: 11px; color: rgba(255,255,255,.22); }
 
-        /* Dot/label buttons */
-        .whoop-dots-row { display: flex; gap: 6px; flex-wrap: wrap; }
-        .whoop-dot-btn {
-          padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
-          border: 1px solid rgba(255,255,255,.12); background: transparent;
-          color: rgba(255,255,255,.4); cursor: pointer; letter-spacing: .02em;
-          transition: background .12s, color .12s, border-color .12s;
+        /* Chip buttons */
+        .wd-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+        .wd-chip {
+          padding: 5px 10px; border-radius: 20px; font-size: 10px; font-weight: 600;
+          border: 1px solid rgba(255,255,255,.08); background: transparent;
+          color: rgba(255,255,255,.3); cursor: pointer; letter-spacing: .04em;
+          transition: all .12s;
         }
-        .whoop-dot-btn:hover { color: #fff; border-color: rgba(255,255,255,.3); }
-        .whoop-dot-btn.active {
-          background: color-mix(in srgb, var(--dot-active) 18%, transparent);
-          color: var(--dot-active);
-          border-color: color-mix(in srgb, var(--dot-active) 45%, transparent);
+        .wd-chip:hover { color: rgba(255,255,255,.7); border-color: rgba(255,255,255,.2); }
+        .wd-chip--on {
+          background: color-mix(in srgb, var(--cc) 14%, transparent);
+          color: var(--cc); border-color: color-mix(in srgb, var(--cc) 38%, transparent);
         }
 
-        /* Submit button */
-        .whoop-log-submit-btn {
-          width: 100%; padding: 14px;
+        /* Submit */
+        .wd-log-submit {
+          width: 100%; padding: 13px;
           border-radius: 12px; border: none; cursor: pointer;
-          background: var(--accent); color: #0a0a0c;
-          font-size: 13px; font-weight: 800; letter-spacing: .08em;
+          background: linear-gradient(135deg, #c4a84f 0%, #a8893a 100%);
+          color: rgba(0,0,0,.85);
+          font-size: 11px; font-weight: 800; letter-spacing: .15em;
           text-transform: uppercase; font-family: 'Inter', sans-serif;
-          transition: opacity .15s; box-shadow: 0 4px 20px rgba(232,255,71,.25);
+          box-shadow: 0 4px 20px rgba(196,168,79,.2);
+          transition: opacity .15s;
         }
-        .whoop-log-submit-btn:hover { opacity: 0.88; }
+        .wd-log-submit:hover { opacity: .88; }
         .lap-segment-summary {
           display: flex; flex-direction: column; gap: 10px;
           margin-bottom: 6px;
