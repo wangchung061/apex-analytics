@@ -573,318 +573,292 @@ const DashboardView = ({ units, athlete, uploadedWorkouts }) => {
     ? `${(weekDist * 0.621371).toFixed(1)} mi`
     : `${weekDist.toFixed(1)} km`;
 
-  // Ring geometry
-  const R = 80, STROKE = 10;
-  const circ = 2 * Math.PI * R;
-  const dash = circ * (readinessPct / 100);
-  // ── ring geometry helper ────────────────────────────────────────────────────
-  const mkArc = (pct, cx, cy, r, sw) => {
-    const c = 2 * Math.PI * r;
-    const d = c * Math.min(1, Math.max(0, pct));
-    return { c, d, cx, cy, r, sw };
-  };
+  // ── build last 7 days for activity heatmap ──────────────────────────────
+  const last7 = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today); d.setDate(today.getDate() - (6 - i));
+    const key = d.toISOString().split("T")[0];
+    const ws  = uploadedWorkouts.filter(w => w.date === key);
+    const tss = ws.reduce((s, w) => s + (w.tss || 0), 0);
+    return {
+      label: d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase(),
+      date: key, tss,
+      sessions: ws.length,
+      isToday: i === 6,
+    };
+  });
 
-  const strainVal    = hasData ? parseFloat(latest.atl.toFixed(1)) : 0;
-  const strainPct    = Math.min(1, strainVal / 21);
-  const recoveryPct  = readinessPct / 100;
-  const sleepPct     = wellnessApplied && sleepHrs > 0 ? Math.min(1, sleepHrs / 9) : 0;
-  const strainColor  = strainPct > 0.75 ? "#e05252"   // deep crimson
-                     : strainPct > 0.45 ? "#c97b3a"   // burnished amber
-                     : "#4a9ebb";                      // steel blue
-  const recovColor   = readinessPct >= 75 ? "#5bbfa0"  // deep jade
-                     : readinessPct >= 55 ? "#c4a84f"  // antique gold
-                     : readinessPct >= 35 ? "#c97b3a"  // burnished amber
-                     : "#9e4f4f";                      // deep rose
-  const sleepColor   = sleepPct >= 0.85 ? "#5bbfa0"   // deep jade
-                     : sleepPct >= 0.6  ? "#c4a84f"   // antique gold
-                     : "#c97b3a";                      // burnished amber
+  const strainVal   = hasData ? parseFloat(latest.atl.toFixed(1)) : 0;
+  const strainPct   = Math.min(1, strainVal / 21);
+  const recoveryPct = readinessPct / 100;
+  const sleepPct    = wellnessApplied && sleepHrs > 0 ? Math.min(1, sleepHrs / 9) : 0;
 
-  // week helpers
+  // Premium jewel-tone colors
+  const strainColor = strainPct > 0.75 ? "#c94a4a" : strainPct > 0.45 ? "#b8893a" : "#4a7fd4";
+  const recovColor  = readinessPct >= 75 ? "#3db87a" : readinessPct >= 55 ? "#b8893a" : readinessPct >= 35 ? "#c94a4a" : "#c94a4a";
+  const sleepColor  = sleepPct >= 0.85 ? "#3db87a" : sleepPct >= 0.6 ? "#b8893a" : "#c94a4a";
+
   const weekStartDate = new Date(today); weekStartDate.setDate(today.getDate()-today.getDay()); weekStartDate.setHours(0,0,0,0);
   const weekWorkouts  = uploadedWorkouts.filter(w => new Date(w.date+"T00:00:00") >= weekStartDate);
   const weekTSS       = weekWorkouts.reduce((s,w)=>s+(w.tss||0),0);
   const weekSessions  = weekWorkouts.length;
 
-  // last activity compact info
-  const lastType     = lastWorkout?.workoutType?.label || "Run";
-  const lastTypeColor = lastWorkout?.workoutType?.color || "#38bdf8";
-  const lastWhen     = daysSinceLast === 0 ? "Today" : daysSinceLast === 1 ? "Yesterday" : `${daysSinceLast}d ago`;
-  const lastDateStr  = lastWorkout ? new Date(lastWorkout.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}) : "";
-  const lastStrain   = lastWorkout ? lastWorkout.tss : 0;
-  const lastStrainPct = Math.min(1, lastStrain / 150);
-  const lastStrainColor = lastStrainPct > 0.65 ? "#ef4444" : lastStrainPct > 0.35 ? "#f97316" : "#38bdf8";
+  const lastType      = lastWorkout?.workoutType?.label || "Run";
+  const lastTypeColor = lastWorkout?.workoutType?.color || "#4a7fd4";
+  const lastDateStr   = lastWorkout ? new Date(lastWorkout.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"}).toUpperCase() : "";
+  const lastStrain    = lastWorkout ? lastWorkout.tss : 0;
+  const lastStrainColor = lastStrain > 100 ? "#c94a4a" : lastStrain > 50 ? "#b8893a" : "#4a7fd4";
+
+  // Ring SVG helpers
+  const ringCirc = (r) => 2 * Math.PI * r;
+  const ringDash = (r, pct) => `${ringCirc(r) * Math.min(1, Math.max(0, pct))} ${ringCirc(r)}`;
 
   return (
-    <div className="wd-root">
+    <div className="fx-root">
 
-      {/* ══ TOP BAR ══ */}
-      <div className="wd-topbar">
-        <div className="wd-topbar-left">
-          <div className="wd-topbar-greeting">{timeGreeting}</div>
-          <div className="wd-topbar-name">{athlete.name.split(" ")[0]}</div>
+      {/* ══ HEADER ══ */}
+      <div className="fx-header">
+        <div className="fx-header-left">
+          <div className="fx-eyebrow">MY FITNESS</div>
         </div>
-        <div className="wd-topbar-date">{new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div>
+        <div className="fx-header-right">
+          <div className="fx-date-badge">
+            {new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase()}
+          </div>
+        </div>
       </div>
 
-      {/* ══ THREE CONCENTRIC RINGS — no card, floats on bg ══ */}
-      <div className="wd-rings-wrap">
-        <div className="wd-rings-glow" style={{ background: `radial-gradient(ellipse at 50% 50%, ${recovColor}1a 0%, transparent 65%)` }} />
+      {/* ══ DAY NAV ══ */}
+      <div className="fx-day-nav">
+        {["SUN","MON","TUE","WED","THU","FRI","SAT"].map((d, i) => {
+          const idx = today.getDay();
+          const offset = i - idx;
+          const isActive = i === idx;
+          const isPast   = i < idx;
+          return (
+            <div key={d} className={`fx-day ${isActive ? "fx-day--active" : ""} ${isPast ? "fx-day--past" : ""}`}>
+              {d}
+            </div>
+          );
+        })}
+      </div>
 
-        <svg className="wd-rings-svg" viewBox="0 0 280 280" preserveAspectRatio="xMidYMid meet">
+      {/* ══ MAIN RING ══ */}
+      <div className="fx-ring-section">
+        <svg className="fx-ring-svg" viewBox="0 0 260 260" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="recovGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={recovColor} stopOpacity="1" />
+              <stop offset="100%" stopColor={recovColor} stopOpacity="0.6" />
+            </linearGradient>
+            <filter id="ringGlow">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            {/* Inner shadow effect */}
+            <radialGradient id="innerShadow" cx="50%" cy="35%" r="60%">
+              <stop offset="0%" stopColor="rgba(255,255,255,.06)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,.3)" />
+            </radialGradient>
+          </defs>
 
-          {/* ── OUTER: STRAIN ── */}
-          {(() => {
-            const r = 126, sw = 9, cx = 140, cy = 140;
-            const c = 2 * Math.PI * r, d = c * strainPct;
-            return (
-              <g>
-                <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth={sw} />
-                <circle cx={cx} cy={cy} r={r} fill="none" stroke={strainColor} strokeWidth={sw}
-                  strokeDasharray={`${d} ${c}`} strokeLinecap="round"
-                  transform={`rotate(-90 ${cx} ${cy})`}
-                  style={{ filter:`drop-shadow(0 0 7px ${strainColor}88)`, transition:"stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1)" }} />
-                {/* Strain label — top-right outside ring */}
-                <text x="247" y="60" textAnchor="middle" fill={strainColor} fontSize="7.5" fontWeight="800" fontFamily="'Inter',sans-serif" letterSpacing="2" opacity="0.9">STRAIN</text>
-                <text x="247" y="74" textAnchor="middle" fill="rgba(255,255,255,.9)" fontSize="15" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">{hasData ? strainVal : "—"}</text>
-              </g>
-            );
-          })()}
+          {/* Track */}
+          <circle cx="130" cy="130" r="100" fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="18" />
 
-          {/* ── MIDDLE: RECOVERY ── */}
-          {(() => {
-            const r = 99, sw = 10, cx = 140, cy = 140;
-            const c = 2 * Math.PI * r, d = c * recoveryPct;
-            return (
-              <g>
-                <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth={sw} />
-                {hasData && (
-                  <circle cx={cx} cy={cy} r={r} fill="none" stroke={recovColor} strokeWidth={sw + 6}
-                    strokeDasharray={`${d} ${c}`} strokeLinecap="round"
-                    transform={`rotate(-90 ${cx} ${cy})`} opacity="0.12"
-                    style={{ filter:"blur(6px)" }} />
-                )}
-                <circle cx={cx} cy={cy} r={r} fill="none" stroke={hasData ? recovColor : "rgba(255,255,255,.07)"} strokeWidth={sw}
-                  strokeDasharray={`${d} ${c}`} strokeLinecap="round"
-                  transform={`rotate(-90 ${cx} ${cy})`}
-                  style={{ filter: hasData ? `drop-shadow(0 0 10px ${recovColor}bb)` : "none", transition:"stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1)" }} />
-                {/* Recovery label — top-left outside ring */}
-                <text x="33" y="60" textAnchor="middle" fill={hasData ? recovColor : "rgba(255,255,255,.18)"} fontSize="7.5" fontWeight="800" fontFamily="'Inter',sans-serif" letterSpacing="2" opacity="0.9">RECOVERY</text>
-                <text x="33" y="74" textAnchor="middle" fill="rgba(255,255,255,.9)" fontSize="15" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">{hasData ? `${readinessPct}%` : "—"}</text>
-              </g>
-            );
-          })()}
+          {/* Glow layer */}
+          {hasData && (
+            <circle cx="130" cy="130" r="100" fill="none"
+              stroke={recovColor} strokeWidth="22" strokeLinecap="round"
+              strokeDasharray={ringDash(100, recoveryPct)}
+              transform="rotate(-90 130 130)"
+              opacity="0.2" style={{ filter: "blur(8px)" }} />
+          )}
 
-          {/* ── INNER: SLEEP ── */}
-          {(() => {
-            const r = 72, sw = 9, cx = 140, cy = 140;
-            const c = 2 * Math.PI * r, d = c * sleepPct;
-            const sleepTxt = wellnessApplied && sleepHrs > 0
-              ? `${Math.floor(sleepHrs)}h${Math.round((sleepHrs%1)*60)>0?Math.round((sleepHrs%1)*60)+"m":""}`
-              : "—";
+          {/* Main arc */}
+          <circle cx="130" cy="130" r="100" fill="none"
+            stroke={hasData ? "url(#recovGrad)" : "rgba(255,255,255,.07)"} strokeWidth="18"
+            strokeLinecap="round"
+            strokeDasharray={ringDash(100, hasData ? recoveryPct : 0)}
+            transform="rotate(-90 130 130)"
+            style={{ transition: "stroke-dasharray 1.5s cubic-bezier(.4,0,.2,1)", filter: hasData ? `drop-shadow(0 0 8px ${recovColor}88)` : "none" }} />
 
-            // Centre block: two lines. Score 52px + gap + label 12px ≈ 70px total.
-            // To vertically centre at cy=140: top of block = 140 - 35 = 105
-            // Line 1 baseline (fontSize 52, baseline ≈ 0.8 of size): 105 + 42 = 147
-            // Line 2 baseline: 147 + 6 (gap) + 12 = 165... too low.
-            // Better: treat midpoint between the two baselines = cy
-            // Line 1 y = cy - 10 = 130, line 2 y = cy + 18 = 158
-            return (
-              <g>
-                <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth={sw} />
-                <circle cx={cx} cy={cy} r={r} fill="none" stroke={sleepPct > 0 ? sleepColor : "rgba(255,255,255,.06)"} strokeWidth={sw}
-                  strokeDasharray={`${d} ${c}`} strokeLinecap="round"
-                  transform={`rotate(-90 ${cx} ${cy})`}
-                  style={{ filter: sleepPct > 0 ? `drop-shadow(0 0 7px ${sleepColor}99)` : "none", transition:"stroke-dasharray 1.4s cubic-bezier(.4,0,.2,1)" }} />
+          {/* Inner fill circle for depth */}
+          <circle cx="130" cy="130" r="91" fill="url(#innerShadow)" opacity="0.4" />
+          <circle cx="130" cy="130" r="91" fill="#222225" />
 
-                {/* ── CENTRED score text ── */}
-                {/* Score number: large, sits just above centre */}
-                <text x={cx} y={cy + 16} textAnchor="middle" dominantBaseline="middle"
-                  fill={hasData ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.2)"}
-                  fontSize="52" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif"
-                  style={{ letterSpacing: "-1px" }}>
-                  {hasData ? readinessPct : "—"}
-                </text>
-                {/* Label: sits below score */}
-                <text x={cx} y={cy + 46} textAnchor="middle" dominantBaseline="middle"
-                  fill={hasData ? recovColor : "rgba(255,255,255,.18)"}
-                  fontSize="10" fontWeight="800" fontFamily="'Inter',sans-serif" letterSpacing="3">
-                  {readinessLabel.toUpperCase()}
-                </text>
-
-                {/* Sleep label — bottom-right outside ring */}
-                <text x="247" y="207" textAnchor="middle" fill={sleepPct > 0 ? sleepColor : "rgba(255,255,255,.18)"} fontSize="7.5" fontWeight="800" fontFamily="'Inter',sans-serif" letterSpacing="2" opacity="0.9">SLEEP</text>
-                <text x="247" y="221" textAnchor="middle" fill="rgba(255,255,255,.9)" fontSize="15" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif">{sleepTxt}</text>
-              </g>
-            );
-          })()}
+          {/* Centre text — three lines spaced around cy=130
+              Line 1 (label):  y = 108  — small caps, 9px
+              Line 2 (score):  y = 143  — large number, 52px, baseline sits ~37px below top
+              Line 3 (status): y = 162  — status word, 11px
+          */}
+          <text x="130" y="108" textAnchor="middle"
+            fill="rgba(255,255,255,.32)"
+            fontSize="9" fontWeight="700" fontFamily="'Inter',sans-serif" letterSpacing="3">
+            {hasData ? "RECOVERY" : "NO DATA"}
+          </text>
+          <text x="130" y="148" textAnchor="middle"
+            fill={hasData ? "#e8e8ea" : "rgba(255,255,255,.18)"}
+            fontSize="52" fontWeight="800" fontFamily="'Barlow Condensed',sans-serif"
+            style={{ letterSpacing: "-1px" }}>
+            {hasData ? readinessPct : "—"}
+          </text>
+          <text x="130" y="168" textAnchor="middle"
+            fill={hasData ? recovColor : "rgba(255,255,255,.18)"}
+            fontSize="11" fontWeight="700" fontFamily="'Inter',sans-serif" letterSpacing="2.5">
+            {readinessLabel.toUpperCase()}
+          </text>
         </svg>
 
-        {/* Recommendation strip */}
-        <div className="wd-rec-strip">
-          <span className="wd-rec-dot" style={{ background: recovColor, boxShadow:`0 0 6px ${recovColor}` }} />
-          <span className="wd-rec-text">{suggestion}</span>
+        {/* LOWEST / HIGHEST strain pill pair */}
+        <div className="fx-pill-row">
+          <div className="fx-stat-group">
+            <div className="fx-stat-group-label">STRAIN</div>
+            <div className="fx-pill fx-pill--blue">
+              <span className="fx-pill-val">{hasData ? strainVal : "—"}</span>
+              <span className="fx-pill-sub">/ 21</span>
+            </div>
+          </div>
+          <div className="fx-pill-divider" />
+          <div className="fx-stat-group">
+            <div className="fx-stat-group-label">SLEEP</div>
+            <div className="fx-pill fx-pill--red" style={{ "--pill-c": sleepColor }}>
+              <span className="fx-pill-val">
+                {wellnessApplied && sleepHrs > 0
+                  ? `${Math.floor(sleepHrs)}h${Math.round((sleepHrs%1)*60)>0?Math.round((sleepHrs%1)*60)+"m":""}`
+                  : "—"}
+              </span>
+              {wellnessApplied && sleepHrs > 0 && <span className="fx-pill-sub">/ 9h</span>}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ══ STAT GRID (2×2) ══ */}
-      <div className="wd-stat-grid">
+      {/* ══ METRICS ROW ══ */}
+      <div className="fx-metrics-row">
         {[
-          { label: "FITNESS", val: hasData ? latest.ctl.toFixed(0) : "—", sub: "CTL · 42d avg", color: "#4a9ebb",
-            bar: hasData ? Math.min(1, latest.ctl / 100) : 0, barColor: "#4a9ebb" },
-          { label: "FORM",    val: hasData ? `${latest.tsb >= 0 ? "+" : ""}${latest.tsb.toFixed(0)}` : "—", sub: "TSB · fitness − fatigue",
-            color: hasData ? (latest.tsb >= 0 ? "#5bbfa0" : "#c97b3a") : "rgba(255,255,255,.2)",
-            bar: hasData ? Math.min(1, Math.abs(latest.tsb) / 30) : 0,
-            barColor: hasData ? (latest.tsb >= 0 ? "#5bbfa0" : "#c97b3a") : "rgba(255,255,255,.08)" },
-          { label: "VO2MAX",  val: (() => { const hv = (parseFloat(athlete.vo2max)||0)>0||perfVO2maxDash; return hv ? resolvedVO2maxDash.value : "—"; })(),
-            sub: "ml · kg⁻¹ · min⁻¹", color: "#c4a84f",
-            bar: (() => { const hv = (parseFloat(athlete.vo2max)||0)>0||perfVO2maxDash; return hv ? Math.min(1,(resolvedVO2maxDash.value-30)/60) : 0; })(),
-            barColor: "#c4a84f" },
-          { label: "HRV",     val: wellnessApplied && dHRV ? dHRV : athlete.hrv || "—", sub: "ms · morning baseline", color: "#9b8ec4",
-            bar: wellnessApplied && dHRV ? Math.min(1, dHRV / 100) : Math.min(1, (athlete.hrv || 0) / 100),
-            barColor: "#9b8ec4" },
+          { label: "FITNESS", val: hasData ? latest.ctl.toFixed(0) : "—", sub: "CTL", color: "#4a7fd4" },
+          { label: "FORM",    val: hasData ? `${latest.tsb>=0?"+":""}${latest.tsb.toFixed(0)}` : "—", sub: "TSB",
+            color: hasData ? (latest.tsb >= 0 ? "#3db87a" : "#c94a4a") : "rgba(255,255,255,.2)" },
+          { label: "VO2MAX",  val: (() => { const hv=(parseFloat(athlete.vo2max)||0)>0||perfVO2maxDash; return hv?resolvedVO2maxDash.value:"—"; })(),
+            sub: "est.", color: "#b8893a" },
+          { label: "HRV",     val: wellnessApplied && dHRV ? dHRV : athlete.hrv || "—", sub: "ms", color: "#7b7ea8" },
         ].map(m => (
-          <div key={m.label} className="wd-stat-tile">
-            <div className="wd-stat-label">{m.label}</div>
-            <div className="wd-stat-val" style={{ color: m.color }}>{m.val}</div>
-            <div className="wd-stat-sub">{m.sub}</div>
-            <div className="wd-stat-bar-track">
-              <div className="wd-stat-bar-fill" style={{ width:`${(m.bar||0)*100}%`, background: m.barColor, boxShadow:`0 0 6px ${m.barColor}66` }} />
-            </div>
+          <div key={m.label} className="fx-metric">
+            <div className="fx-metric-val" style={{ color: m.color }}>{m.val}</div>
+            <div className="fx-metric-label">{m.label}</div>
+            <div className="fx-metric-sub">{m.sub}</div>
           </div>
         ))}
       </div>
 
-      {/* ══ LAST ACTIVITY ══ */}
-      <div className="wd-section-hdr">LAST ACTIVITY</div>
-      <div className="wd-activity">
+      {/* ══ SECTION: WEEKLY STRAIN ══ */}
+      <div className="fx-section-title">WEEKLY STRAIN</div>
+      <div className="fx-week-heatmap">
+        {last7.map((day, i) => {
+          const intensity = day.tss > 100 ? 1 : day.tss > 60 ? 0.75 : day.tss > 20 ? 0.5 : day.tss > 0 ? 0.25 : 0;
+          const dotColor = intensity > 0 ? `rgba(74,127,212,${0.3 + intensity * 0.7})` : "rgba(255,255,255,.06)";
+          return (
+            <div key={i} className={`fx-week-day ${day.isToday ? "fx-week-day--today" : ""}`}>
+              <div className="fx-week-dot" style={{ background: dotColor, boxShadow: intensity > 0.5 ? `0 0 6px rgba(74,127,212,${intensity * 0.5})` : "none" }}>
+                {day.tss > 0 && <span className="fx-week-dot-tss">{day.tss}</span>}
+              </div>
+              <div className="fx-week-lbl">{day.label.slice(0,2)}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ══ SECTION: LAST ACTIVITY ══ */}
+      <div className="fx-section-title">LAST ACTIVITY</div>
+      <div className="fx-activity-row">
         {lastWorkout ? (
-          <div className="wd-activity-inner">
-            <div className="wd-activity-left">
-              {/* Activity name */}
-              <div className="wd-activity-name">{lastWorkout.name}</div>
-              {/* Date */}
-              <div className="wd-activity-date">{lastDateStr}</div>
-              {/* Category badge */}
-              {lastWorkout.workoutType && (
-                <div className="wd-activity-type-badge" style={{ "--tc": lastTypeColor }}>
-                  <Icon name={lastWorkout.workoutType?.icon || "run"} size={12} color={lastTypeColor} />
-                  <span>{lastType}</span>
-                </div>
-              )}
+          <>
+            <div className="fx-activity-icon-wrap" style={{ "--ic": lastTypeColor }}>
+              <Icon name={lastWorkout.workoutType?.icon || "run"} size={18} color={lastTypeColor} />
             </div>
-            {/* Strain — plain number, no ring */}
-            <div className="wd-activity-strain-block">
-              <div className="wd-activity-strain-num" style={{ color: lastStrainColor }}>{lastStrain}</div>
-              <div className="wd-activity-strain-sub">TSS</div>
-              <div className="wd-activity-strain-lbl" style={{ color: lastStrainColor }}>STRAIN</div>
+            <div className="fx-activity-info">
+              <div className="fx-activity-name">{lastWorkout.name}</div>
+              <div className="fx-activity-date">{lastDateStr}</div>
+              <div className="fx-activity-type" style={{ color: lastTypeColor }}>{lastType.toUpperCase()}</div>
             </div>
-          </div>
+            <div className="fx-activity-strain" style={{ "--sc": lastStrainColor }}>
+              <div className="fx-activity-strain-val">{lastStrain}</div>
+              <div className="fx-activity-strain-lbl">TSS</div>
+            </div>
+          </>
         ) : (
-          <div className="wd-activity-empty">
-            <Icon name="run" size={22} color="rgba(255,255,255,.15)" />
+          <div className="fx-activity-empty">
+            <Icon name="run" size={20} color="rgba(255,255,255,.12)" />
             <span>Import a workout to get started</span>
           </div>
         )}
       </div>
 
-      {/* ══ THIS WEEK ══ */}
-      <div className="wd-section-hdr">THIS WEEK</div>
-      <div className="wd-week-strip">
-        {[
-          { label: "DISTANCE", val: hasData ? weekDistFmt : "—" },
-          { label: "SESSIONS", val: weekSessions || "—" },
-          { label: "TSS",      val: weekTSS || "—" },
-        ].map(t => (
-          <div key={t.label} className="wd-week-tile">
-            <div className="wd-week-val">{t.val}</div>
-            <div className="wd-week-lbl">{t.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ══ DAILY LOG ══ */}
-      <div className="wd-section-hdr">
+      {/* ══ SECTION: DAILY LOG ══ */}
+      <div className="fx-section-title">
         DAILY LOG
-        {submitted && wellnessApplied && <span className="wd-log-badge">✓ APPLIED</span>}
+        {submitted && wellnessApplied && <span className="fx-applied-badge">✓ APPLIED</span>}
       </div>
-      <div className="wd-log">
+      <div className="fx-log-card">
         {submitted ? (
-          /* ── Minimized pill — tap to expand ── */
-          <div className="wd-log-mini" onClick={handleEditWellness}>
-            <div className="wd-log-mini-chips">
+          <div className="fx-log-mini" onClick={handleEditWellness}>
+            <div className="fx-log-mini-chips">
               {sleepHrs > 0 && (
-                <span className="wd-log-mini-chip" style={{ "--mc": sleepColor }}>
+                <span className="fx-log-chip" style={{ "--cc": sleepColor }}>
                   <Icon name="sleep" size={10} color={sleepColor} />
                   {Math.floor(sleepHrs)}h{Math.round((sleepHrs%1)*60)>0?Math.round((sleepHrs%1)*60)+"m":""}
                 </span>
               )}
-              {dHRV && (
-                <span className="wd-log-mini-chip" style={{ "--mc": "#a78bfa" }}>
-                  <Icon name="heart" size={10} color="#a78bfa" />
-                  {dHRV} ms
-                </span>
-              )}
-              {dSoreness > 0 && (
-                <span className="wd-log-mini-chip" style={{ "--mc": dSoreness >= 4 ? "#ef4444" : dSoreness >= 3 ? "#f97316" : "#34d399" }}>
-                  {["","None","Mild","Mod","High","Max"][dSoreness]}
-                </span>
-              )}
-              {dEnergy > 0 && (
-                <span className="wd-log-mini-chip" style={{ "--mc": dEnergy >= 4 ? "#34d399" : dEnergy >= 3 ? "#e8ff47" : "#f97316" }}>
-                  {["","Low","Low","OK","Good","Great"][dEnergy]}
-                </span>
-              )}
+              {dHRV && <span className="fx-log-chip" style={{ "--cc": "#7b7ea8" }}><Icon name="heart" size={10} color="#9b8ec4" />{dHRV}ms</span>}
+              {dSoreness > 0 && <span className="fx-log-chip" style={{ "--cc": dSoreness>=4?"#c94a4a":dSoreness>=3?"#b8893a":"#3db87a" }}>{["","None","Mild","Mod","High","Max"][dSoreness]}</span>}
+              {dEnergy > 0 && <span className="fx-log-chip" style={{ "--cc": dEnergy>=4?"#3db87a":dEnergy>=3?"#b8893a":"#c94a4a" }}>{["","Low","Low","OK","Good","Great"][dEnergy]}</span>}
             </div>
-            <span className="wd-log-mini-edit">Edit ›</span>
+            <span className="fx-log-edit-hint">Edit ›</span>
           </div>
         ) : (
           <>
-            <div className="wd-log-form">
-              <div className="wd-log-field">
-                <span className="wd-log-field-lbl"><Icon name="sleep" size={11} style={{marginRight:4}} />Sleep</span>
-                <div className="wd-log-field-inputs">
-                  <input className="wd-inp" type="number" min="0" max="14" placeholder="0" value={dSleepH} onChange={e=>setDraft({sleepH:e.target.value})} />
-                  <span className="wd-unit">h</span>
-                  <input className="wd-inp" type="number" min="0" max="59" step="5" placeholder="0" value={dSleepM} onChange={e=>setDraft({sleepM:e.target.value})} />
-                  <span className="wd-unit">m</span>
+            <div className="fx-log-form">
+              <div className="fx-log-row">
+                <span className="fx-log-lbl"><Icon name="sleep" size={11} style={{marginRight:5}} />Sleep</span>
+                <div className="fx-log-inputs">
+                  <input className="fx-inp" type="number" min="0" max="14" placeholder="0" value={dSleepH} onChange={e=>setDraft({sleepH:e.target.value})} /><span className="fx-unit">h</span>
+                  <input className="fx-inp" type="number" min="0" max="59" step="5" placeholder="0" value={dSleepM} onChange={e=>setDraft({sleepM:e.target.value})} /><span className="fx-unit">m</span>
                 </div>
               </div>
-              <div className="wd-log-field">
-                <span className="wd-log-field-lbl"><Icon name="heart" size={11} style={{marginRight:4}} />HRV</span>
-                <div className="wd-log-field-inputs">
-                  <input className="wd-inp" type="number" min="0" max="200" placeholder="—" value={dHRV} onChange={e=>setDraft({hrv:e.target.value})} />
-                  <span className="wd-unit">ms</span>
+              <div className="fx-log-row">
+                <span className="fx-log-lbl"><Icon name="heart" size={11} style={{marginRight:5}} />HRV</span>
+                <div className="fx-log-inputs">
+                  <input className="fx-inp" type="number" min="0" max="200" placeholder="—" value={dHRV} onChange={e=>setDraft({hrv:e.target.value})} /><span className="fx-unit">ms</span>
                 </div>
               </div>
-              <div className="wd-log-field">
-                <span className="wd-log-field-lbl"><Icon name="warn" size={11} style={{marginRight:4}} />Soreness</span>
-                <div className="wd-chips">
+              <div className="fx-log-row fx-log-row--chips">
+                <span className="fx-log-lbl"><Icon name="warn" size={11} style={{marginRight:5}} />Soreness</span>
+                <div className="fx-chips">
                   {["None","Mild","Mod","High","Max"].map((l,i)=>(
-                    <button key={i} className={`wd-chip ${dSoreness===i+1?"wd-chip--on":""}`}
-                      style={{"--cc":"#c97b3a"}} onClick={()=>setDraft({soreness:dSoreness===i+1?0:i+1})}>{l}</button>
+                    <button key={i} className={`fx-chip ${dSoreness===i+1?"fx-chip--on":""}`}
+                      style={{"--cc":"#b8893a"}} onClick={()=>setDraft({soreness:dSoreness===i+1?0:i+1})}>{l}</button>
                   ))}
                 </div>
               </div>
-              <div className="wd-log-field">
-                <span className="wd-log-field-lbl"><Icon name="power" size={11} style={{marginRight:4}} />Energy</span>
-                <div className="wd-chips">
+              <div className="fx-log-row fx-log-row--chips">
+                <span className="fx-log-lbl"><Icon name="power" size={11} style={{marginRight:5}} />Energy</span>
+                <div className="fx-chips">
                   {["Low","↓","OK","Good","Great"].map((l,i)=>(
-                    <button key={i} className={`wd-chip ${dEnergy===i+1?"wd-chip--on":""}`}
-                      style={{"--cc":"#5bbfa0"}} onClick={()=>setDraft({energy:dEnergy===i+1?0:i+1})}>{l}</button>
+                    <button key={i} className={`fx-chip ${dEnergy===i+1?"fx-chip--on":""}`}
+                      style={{"--cc":"#3db87a"}} onClick={()=>setDraft({energy:dEnergy===i+1?0:i+1})}>{l}</button>
                   ))}
                 </div>
               </div>
-              <div className="wd-log-field">
-                <span className="wd-log-field-lbl"><Icon name="star" size={11} style={{marginRight:4}} />Sleep Quality</span>
-                <div className="wd-chips">
+              <div className="fx-log-row fx-log-row--chips">
+                <span className="fx-log-lbl"><Icon name="star" size={11} style={{marginRight:5}} />Sleep Q.</span>
+                <div className="fx-chips">
                   {[1,2,3,4,5].map(v=>(
-                    <button key={v} className={`wd-chip ${dSleepQ>=v?"wd-chip--on":""}`}
-                      style={{"--cc":"#4a9ebb"}} onClick={()=>setDraft({sleepQual:dSleepQ===v?0:v})}>{v}★</button>
+                    <button key={v} className={`fx-chip ${dSleepQ>=v?"fx-chip--on":""}`}
+                      style={{"--cc":"#4a7fd4"}} onClick={()=>setDraft({sleepQual:dSleepQ===v?0:v})}>{v}★</button>
                   ))}
                 </div>
               </div>
             </div>
-            <button className="wd-log-submit" onClick={handleSubmitWellness}>Update Readiness</button>
+            <button className="fx-submit-btn" onClick={handleSubmitWellness}>UPDATE READINESS</button>
           </>
         )}
       </div>
@@ -3803,18 +3777,18 @@ function App() {
         
         :root {
           /* ── Dark (default) — true black, minimal ── */
-          --bg:          #0c0c0e;
-          --bg2:         #111114;
-          --bg3:         #18181c;
-          --card:        #141417;
-          --card-border: #222228;
+          --bg:          #1c1c1e;
+          --bg2:         #222226;
+          --bg3:         #2a2a2e;
+          --card:        #252528;
+          --card-border: #333338;
 
           /* ── Accent palette ── */
-          --accent:      #e8ff47;   /* electric yellow-green — readable on black */
-          --accent2:     #ff4d00;   /* electric orange — effort/HR */
-          --accent3:     #00d4aa;   /* teal — recovery/good */
-          --accent4:     #8b5cf6;   /* violet — power/advanced */
-          --accent5:     #3b82f6;   /* blue — secondary data */
+          --accent:      #4a7fd4;   /* electric yellow-green — readable on black */
+          --accent2:     #c94a4a;   /* electric orange — effort/HR */
+          --accent3:     #3db87a;   /* teal — recovery/good */
+          --accent4:     #7b7ea8;   /* violet — power/advanced */
+          --accent5:     #4a7fd4;   /* blue — secondary data */
 
           /* ── Keep legacy var names so existing code works ── */
           --lime:   var(--accent);
@@ -3824,10 +3798,10 @@ function App() {
           --blue:   var(--accent5);
 
           /* ── Text ── */
-          --text:  #f5f5f7;
-          --text1: #f5f5f7;
-          --text2: #b0b0bc;
-          --text3: #72727e;
+          --text:  #e8e8ea;
+          --text1: #e8e8ea;
+          --text2: #888892;
+          --text3: #5a5a66;
         }
 
         /* ── Light mode ───────────────────────────────────────────── */
@@ -3838,9 +3812,9 @@ function App() {
           --card:        #ffffff;
           --card-border: #d8d8dc;
 
-          --accent:      #2a7d00;
+          --accent:      #2b5eb8;
           --accent2:     #c43300;
-          --accent3:     #008a6e;
+          --accent3:     #2a9660;
           --accent4:     #6d28d9;
           --accent5:     #1d4ed8;
 
@@ -5427,259 +5401,289 @@ function App() {
         /* Selected day workout list */
         .cal-workout-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 
-        /* ══ PREMIUM DASHBOARD ══════════════════════════════════════ */
-        .wd-root {
-          display: flex; flex-direction: column; gap: 10px;
-          padding: 0 0 24px;
-          background: #08080a;
+        /* ══ SCREENSHOT-FAITHFUL DASHBOARD ══════════════════════════ */
+        .fx-root {
+          display: flex; flex-direction: column; gap: 0;
+          background: #1c1c1e;
           min-height: 100%;
+          padding-bottom: 24px;
         }
 
-        /* Top bar */
-        .wd-topbar {
-          display: flex; align-items: flex-end; justify-content: space-between;
-          padding: 16px 16px 10px;
+        /* Header */
+        .fx-header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 18px 18px 10px;
         }
-        .wd-topbar-greeting {
-          font-size: 10px; color: rgba(255,255,255,.28);
-          text-transform: uppercase; letter-spacing: 2px; font-weight: 600;
+        .fx-eyebrow {
+          font-size: 11px; font-weight: 700; letter-spacing: 3px;
+          color: #888892; text-transform: uppercase;
         }
-        .wd-topbar-name {
+        .fx-date-badge {
+          font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+          color: #888892;
+          border: 1px solid rgba(255,255,255,.1);
+          border-radius: 20px; padding: 3px 10px;
+        }
+
+        /* Day nav — scrolling week tabs like the screenshot */
+        .fx-day-nav {
+          display: flex; align-items: center;
+          padding: 0 16px 14px;
+          gap: 0; overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .fx-day-nav::-webkit-scrollbar { display: none; }
+        .fx-day {
+          flex: 1; text-align: center; padding: 6px 4px;
+          font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+          color: rgba(255,255,255,.25); cursor: default;
+          border-bottom: 2px solid transparent;
+          transition: all .15s; white-space: nowrap;
+        }
+        .fx-day--active {
+          color: #e8e8ea;
+          border-bottom-color: #4a7fd4;
+        }
+        .fx-day--past { color: rgba(255,255,255,.35); }
+
+        /* Main ring section */
+        .fx-ring-section {
+          display: flex; flex-direction: column; align-items: center;
+          padding: 0 16px 8px;
+        }
+        .fx-ring-svg {
+          width: 240px; height: 240px; display: block;
+        }
+
+        /* Pill pair row */
+        .fx-pill-row {
+          display: flex; align-items: center; gap: 16px;
+          margin-top: 6px; width: 100%; justify-content: center;
+        }
+        .fx-stat-group {
+          display: flex; flex-direction: column; align-items: center; gap: 5px;
+        }
+        .fx-stat-group-label {
+          font-size: 8.5px; font-weight: 700; letter-spacing: 2px;
+          color: #5a5a66; text-transform: uppercase;
+        }
+        .fx-pill {
+          display: flex; align-items: baseline; gap: 4px;
+          padding: 8px 18px; border-radius: 28px;
+          border: 1.5px solid #4a7fd4;
+          background: rgba(74,127,212,.07);
+          min-width: 90px; justify-content: center;
+        }
+        .fx-pill--red {
+          border-color: var(--pill-c, #c94a4a);
+          background: color-mix(in srgb, var(--pill-c, #c94a4a) 7%, transparent);
+        }
+        .fx-pill-val {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: 32px; font-weight: 800;
-          color: rgba(255,255,255,.92);
-          line-height: 1; margin-top: 1px;
-          letter-spacing: -0.5px;
+          font-size: 28px; font-weight: 800;
+          color: #e8e8ea; line-height: 1;
         }
-        .wd-topbar-date {
-          font-size: 11px; color: rgba(255,255,255,.28);
-          border: 1px solid rgba(255,255,255,.09); border-radius: 20px;
-          padding: 3px 11px; margin-bottom: 5px;
+        .fx-pill-sub {
+          font-size: 10px; color: #888892; font-weight: 500;
+        }
+        .fx-pill-divider {
+          width: 32px; height: 1px; background: rgba(255,255,255,.1);
+        }
+
+        /* 4-metric row */
+        .fx-metrics-row {
+          display: grid; grid-template-columns: repeat(4, 1fr);
+          gap: 0; padding: 14px 12px 8px;
+          border-top: 1px solid rgba(255,255,255,.05);
+          border-bottom: 1px solid rgba(255,255,255,.05);
+          margin: 8px 0;
+        }
+        .fx-metric {
+          display: flex; flex-direction: column; align-items: center;
+          gap: 2px; padding: 4px;
+        }
+        .fx-metric + .fx-metric {
+          border-left: 1px solid rgba(255,255,255,.06);
+        }
+        .fx-metric-val {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 28px; font-weight: 800; line-height: 1;
+        }
+        .fx-metric-label {
+          font-size: 7.5px; font-weight: 700; letter-spacing: 2px;
+          color: #5a5a66; text-transform: uppercase;
+        }
+        .fx-metric-sub {
+          font-size: 9px; color: rgba(255,255,255,.2);
+        }
+
+        /* Section titles */
+        .fx-section-title {
+          font-size: 8.5px; font-weight: 700; letter-spacing: 2.5px;
+          color: #5a5a66; text-transform: uppercase;
+          padding: 10px 18px 6px;
+          display: flex; align-items: center; gap: 8px;
+        }
+        .fx-applied-badge {
+          font-size: 8px; color: #3db87a; font-weight: 700;
+          background: rgba(61,184,122,.1); border: 1px solid rgba(61,184,122,.2);
+          border-radius: 10px; padding: 2px 7px; letter-spacing: 1px;
+        }
+
+        /* Weekly heatmap */
+        .fx-week-heatmap {
+          display: flex; gap: 6px; padding: 4px 16px 12px;
+          justify-content: space-between;
+        }
+        .fx-week-day {
+          display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1;
+        }
+        .fx-week-day--today .fx-week-dot {
+          outline: 1.5px solid rgba(74,127,212,.5);
+          outline-offset: 2px;
+        }
+        .fx-week-dot {
+          width: 36px; height: 36px; border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          position: relative; transition: background .3s;
+        }
+        .fx-week-dot-tss {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 11px; font-weight: 800;
+          color: rgba(255,255,255,.85); line-height: 1;
+        }
+        .fx-week-lbl {
+          font-size: 8px; font-weight: 700; letter-spacing: 1px;
+          color: #5a5a66; text-transform: uppercase;
+        }
+
+        /* Last Activity row */
+        .fx-activity-row {
+          display: flex; align-items: center; gap: 14px;
+          padding: 12px 16px;
+          background: #252528;
+          border-radius: 16px; margin: 0 12px 4px;
+          border: 1px solid rgba(255,255,255,.06);
+        }
+        .fx-activity-icon-wrap {
+          width: 44px; height: 44px; border-radius: 14px; flex-shrink: 0;
+          background: color-mix(in srgb, var(--ic, #4a7fd4) 12%, transparent);
+          border: 1px solid color-mix(in srgb, var(--ic, #4a7fd4) 25%, transparent);
+          display: flex; align-items: center; justify-content: center;
+        }
+        .fx-activity-info { flex: 1; min-width: 0; }
+        .fx-activity-name {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 18px; font-weight: 800; color: #e8e8ea;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          line-height: 1.1;
+        }
+        .fx-activity-date {
+          font-size: 10px; color: #5a5a66; margin: 2px 0;
           letter-spacing: 0.3px;
         }
-
-        /* Hero ring panel — no card, floats on bg */
-        .wd-rings-wrap {
-          position: relative;
+        .fx-activity-type {
+          font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+        }
+        .fx-activity-strain {
           display: flex; flex-direction: column; align-items: center;
-          padding: 8px 10px 4px;
+          flex-shrink: 0; gap: 0;
+          border-left: 1px solid rgba(255,255,255,.07);
+          padding-left: 14px;
         }
-        .wd-rings-glow {
-          position: absolute; inset: 0; pointer-events: none; z-index: 0;
-          border-radius: 50%;
-        }
-
-        /* Full-width SVG rings */
-        .wd-rings-svg {
-          width: 280px; height: 280px; display: block;
-          position: relative; z-index: 1;
-        }
-
-        /* Rec strip */
-        .wd-rec-strip {
-          display: flex; align-items: center; gap: 8px;
-          margin: 12px 16px 0; padding: 9px 13px;
-          background: rgba(255,255,255,.04);
-          border: 1px solid rgba(255,255,255,.06);
-          border-radius: 10px; position: relative; z-index: 1;
-        }
-        .wd-rec-dot {
-          width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-        }
-        .wd-rec-text {
-          font-size: 11.5px; color: rgba(255,255,255,.6); line-height: 1.4;
-        }
-
-        /* 2×2 stat grid */
-        .wd-stat-grid {
-          display: grid; grid-template-columns: 1fr 1fr;
-          gap: 8px; padding: 0 10px;
-        }
-        .wd-stat-tile {
-          background: #0f0f12;
-          border: 1px solid rgba(255,255,255,.06);
-          border-radius: 14px; padding: 14px 14px 12px;
-          display: flex; flex-direction: column; gap: 2px;
-        }
-        .wd-stat-label {
-          font-size: 8.5px; font-weight: 800; letter-spacing: 2px;
-          color: rgba(255,255,255,.28); text-transform: uppercase; margin-bottom: 2px;
-        }
-        .wd-stat-val {
+        .fx-activity-strain-val {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: 34px; font-weight: 800; line-height: 1;
+          font-size: 34px; font-weight: 800; color: var(--sc, #4a7fd4); line-height: 1;
         }
-        .wd-stat-sub {
-          font-size: 9.5px; color: rgba(255,255,255,.22); margin-bottom: 8px;
+        .fx-activity-strain-lbl {
+          font-size: 8px; font-weight: 700; letter-spacing: 2px;
+          color: #5a5a66; text-transform: uppercase;
         }
-        .wd-stat-bar-track {
-          height: 3px; background: rgba(255,255,255,.07);
-          border-radius: 2px; overflow: hidden;
-        }
-        .wd-stat-bar-fill {
-          height: 100%; border-radius: 2px;
-          transition: width 1s cubic-bezier(.4,0,.2,1);
+        .fx-activity-empty {
+          display: flex; align-items: center; gap: 10px;
+          color: #5a5a66; font-size: 12px;
+          padding: 4px 0;
         }
 
-        /* Section header */
-        .wd-section-hdr {
-          font-size: 8.5px; font-weight: 800; letter-spacing: 2px;
-          text-transform: uppercase; color: rgba(255,255,255,.28);
-          padding: 4px 16px 0;
-          display: flex; align-items: center; gap: 8px;
-        }
-        .wd-log-badge {
-          font-size: 8px; color: #5bbfa0; font-weight: 700; letter-spacing: 1px;
-          background: rgba(91,191,160,.1); border: 1px solid rgba(91,191,160,.22);
-          border-radius: 10px; padding: 2px 7px;
-        }
-
-        /* Last Activity */
-        .wd-activity {
-          background: #0f0f12;
+        /* Daily log card */
+        .fx-log-card {
+          background: #252528;
           border: 1px solid rgba(255,255,255,.06);
-          border-radius: 16px; margin: 0 10px;
-          padding: 16px;
-        }
-        .wd-activity-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-        .wd-activity-left { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
-        .wd-activity-name {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-size: 20px; font-weight: 800; color: #fff;
-          line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .wd-activity-date {
-          font-size: 11px; color: rgba(255,255,255,.3); margin-bottom: 4px;
-        }
-        .wd-activity-type-badge {
-          display: inline-flex; align-items: center; gap: 5px;
-          background: color-mix(in srgb, var(--tc, #38bdf8) 12%, transparent);
-          border: 1px solid color-mix(in srgb, var(--tc, #38bdf8) 30%, transparent);
-          border-radius: 20px; padding: 4px 10px;
-          font-size: 11px; font-weight: 700; color: var(--tc, #38bdf8);
-          width: fit-content;
-        }
-        /* Strain — plain number block */
-        .wd-activity-strain-block {
-          display: flex; flex-direction: column; align-items: center;
-          gap: 1px; flex-shrink: 0;
-          padding: 10px 16px;
-          background: rgba(255,255,255,.04);
-          border: 1px solid rgba(255,255,255,.06);
-          border-radius: 12px;
-        }
-        .wd-activity-strain-num {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-size: 36px; font-weight: 800; line-height: 1;
-        }
-        .wd-activity-strain-sub {
-          font-size: 9px; color: rgba(255,255,255,.3); letter-spacing: 1px;
-        }
-        .wd-activity-strain-lbl {
-          font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
-          text-transform: uppercase; margin-top: 2px;
-        }
-        .wd-activity-empty {
-          display: flex; flex-direction: column; align-items: center;
-          gap: 8px; padding: 20px 0; color: rgba(255,255,255,.2); font-size: 11px;
-        }
-
-        /* Week strip */
-        .wd-week-strip {
-          display: grid; grid-template-columns: repeat(3, 1fr);
-          gap: 8px; padding: 0 10px;
-        }
-        .wd-week-tile {
-          background: #0f0f12;
-          border: 1px solid rgba(255,255,255,.06);
-          border-radius: 14px; padding: 14px 10px;
-          display: flex; flex-direction: column; align-items: center; gap: 4px;
-        }
-        .wd-week-val {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-size: 24px; font-weight: 800; color: #fff; line-height: 1;
-        }
-        .wd-week-lbl {
-          font-size: 8px; color: rgba(255,255,255,.28);
-          text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;
-        }
-
-        /* Daily log */
-        .wd-log {
-          background: #0f0f12;
-          border: 1px solid rgba(255,255,255,.06);
-          border-radius: 16px; margin: 0 10px;
+          border-radius: 16px; margin: 0 12px;
           padding: 14px 16px;
         }
 
-        /* Minimized pill — shown after submit */
-        .wd-log-mini {
+        /* Minimized pill */
+        .fx-log-mini {
           display: flex; align-items: center; justify-content: space-between;
-          gap: 10px; cursor: pointer;
+          gap: 8px; cursor: pointer;
           -webkit-tap-highlight-color: transparent;
         }
-        .wd-log-mini-chips {
-          display: flex; flex-wrap: wrap; gap: 6px; flex: 1;
-        }
-        .wd-log-mini-chip {
+        .fx-log-mini-chips { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+        .fx-log-chip {
           display: inline-flex; align-items: center; gap: 4px;
-          font-size: 11px; font-weight: 600;
-          color: var(--mc, #38bdf8);
-          background: color-mix(in srgb, var(--mc, #38bdf8) 12%, transparent);
-          border: 1px solid color-mix(in srgb, var(--mc, #38bdf8) 28%, transparent);
-          border-radius: 20px; padding: 4px 9px;
+          font-size: 10.5px; font-weight: 600;
+          color: var(--cc, #3db87a);
+          background: color-mix(in srgb, var(--cc, #3db87a) 10%, transparent);
+          border: 1px solid color-mix(in srgb, var(--cc, #3db87a) 22%, transparent);
+          border-radius: 20px; padding: 3px 9px;
         }
-        .wd-log-mini-edit {
-          font-size: 11px; color: rgba(255,255,255,.3); white-space: nowrap;
-          flex-shrink: 0;
+        .fx-log-edit-hint {
+          font-size: 11px; color: rgba(255,255,255,.22); white-space: nowrap;
         }
 
         /* Log form */
-        .wd-log-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
-        .wd-log-field { display: flex; flex-direction: column; gap: 6px; }
-        .wd-log-field-lbl {
-          font-size: 8.5px; font-weight: 700; letter-spacing: 2px;
-          text-transform: uppercase; color: rgba(255,255,255,.25);
-          display: flex; align-items: center;
+        .fx-log-form { display: flex; flex-direction: column; gap: 0; margin-bottom: 14px; }
+        .fx-log-row {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.05);
+          gap: 8px;
         }
-        .wd-log-field-inputs { display: flex; align-items: center; gap: 5px; }
-        .wd-inp {
-          width: 58px; padding: 7px 8px;
-          border-radius: 8px; border: 1px solid rgba(255,255,255,.08);
-          background: rgba(255,255,255,.04); color: rgba(255,255,255,.9);
+        .fx-log-row:last-child { border-bottom: none; }
+        .fx-log-row--chips { align-items: flex-start; }
+        .fx-log-lbl {
+          font-size: 11px; color: #888892; font-weight: 500;
+          display: flex; align-items: center; white-space: nowrap; min-width: 72px;
+        }
+        .fx-log-inputs { display: flex; align-items: center; gap: 5px; }
+        .fx-inp {
+          width: 52px; padding: 6px 8px;
+          border-radius: 8px; border: 1px solid rgba(255,255,255,.09);
+          background: rgba(255,255,255,.04); color: #e8e8ea;
           font-size: 16px; font-family: 'Barlow Condensed', sans-serif;
           font-weight: 700; text-align: center; outline: none;
           transition: border-color .15s;
         }
-        .wd-inp:focus { border-color: rgba(196,168,79,.5); }
-        .wd-unit { font-size: 11px; color: rgba(255,255,255,.22); }
+        .fx-inp:focus { border-color: rgba(91,157,201,.5); }
+        .fx-unit { font-size: 11px; color: rgba(255,255,255,.22); }
 
-        /* Chip buttons */
-        .wd-chips { display: flex; gap: 5px; flex-wrap: wrap; }
-        .wd-chip {
-          padding: 5px 10px; border-radius: 20px; font-size: 10px; font-weight: 600;
-          border: 1px solid rgba(255,255,255,.08); background: transparent;
-          color: rgba(255,255,255,.3); cursor: pointer; letter-spacing: .04em;
+        /* Chips */
+        .fx-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+        .fx-chip {
+          padding: 4px 9px; border-radius: 20px; font-size: 10px; font-weight: 600;
+          border: 1px solid rgba(255,255,255,.09); background: transparent;
+          color: #5a5a66; cursor: pointer; letter-spacing: .03em;
           transition: all .12s;
         }
-        .wd-chip:hover { color: rgba(255,255,255,.7); border-color: rgba(255,255,255,.2); }
-        .wd-chip--on {
+        .fx-chip:hover { color: rgba(255,255,255,.65); border-color: rgba(255,255,255,.2); }
+        .fx-chip--on {
           background: color-mix(in srgb, var(--cc) 14%, transparent);
-          color: var(--cc); border-color: color-mix(in srgb, var(--cc) 38%, transparent);
+          color: var(--cc); border-color: color-mix(in srgb, var(--cc) 35%, transparent);
         }
 
         /* Submit */
-        .wd-log-submit {
-          width: 100%; padding: 13px;
+        .fx-submit-btn {
+          width: 100%; padding: 12px;
           border-radius: 12px; border: none; cursor: pointer;
-          background: linear-gradient(135deg, #c4a84f 0%, #a8893a 100%);
-          color: rgba(0,0,0,.85);
+          background: linear-gradient(135deg, #4a7fd4 0%, #3565b0 100%);
+          color: rgba(255,255,255,.9);
           font-size: 11px; font-weight: 800; letter-spacing: .15em;
           text-transform: uppercase; font-family: 'Inter', sans-serif;
-          box-shadow: 0 4px 20px rgba(196,168,79,.2);
+          box-shadow: 0 4px 18px rgba(74,127,212,.22);
           transition: opacity .15s;
         }
-        .wd-log-submit:hover { opacity: .88; }
+        .fx-submit-btn:hover { opacity: .88; }
+
         .lap-segment-summary {
           display: flex; flex-direction: column; gap: 10px;
           margin-bottom: 6px;
